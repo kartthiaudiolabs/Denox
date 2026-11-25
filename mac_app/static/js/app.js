@@ -219,6 +219,9 @@ document.addEventListener('DOMContentLoaded', () => {
       dspState.threshold = val / 100.0;
       dspState.denoiser.threshold = val / 100.0;
       if (dispDnthresh) dispDnthresh.innerText = `${val}%`;
+      if (typeof auditionManager !== 'undefined') {
+        auditionManager.notifyParamChange('denoiser');
+      }
       let desc = "ZERO BACKGROUND NOISE";
       if (val === 0) desc = "RAW AUDIO (0% CLEAN)";
       else if (val <= 25) desc = "SUBTLE NOISE ATTENUATION";
@@ -249,7 +252,7 @@ document.addEventListener('DOMContentLoaded', () => {
   setupModuleToggle('btn-toggle-deesser', 'card-module-deesser', 'deesser');
 
   // Sliders Wiring
-  function wireSlider(sliderId, dispId, callback, formatFn) {
+  function wireSlider(sliderId, dispId, callback, formatFn, modKey) {
     const slider = document.getElementById(sliderId);
     const disp = document.getElementById(dispId);
     if (!slider) return;
@@ -257,18 +260,21 @@ document.addEventListener('DOMContentLoaded', () => {
       const val = parseFloat(e.target.value);
       callback(val);
       if (disp) disp.innerText = formatFn ? formatFn(val) : `${val}%`;
+      if (modKey && typeof auditionManager !== 'undefined') {
+        auditionManager.notifyParamChange(modKey);
+      }
     });
   }
 
-  wireSlider('slider-dn-bleed', 'disp-dn-bleed', v => dspState.denoiser.ambient_bleed = v / 100.0, v => `${Math.round(v)}%`);
-  wireSlider('slider-dc-sens', 'disp-dc-sens', v => dspState.declicker.sensitivity = v / 100.0);
-  wireSlider('slider-dc-width', 'disp-dc-width', v => dspState.declicker.click_width_samples = Math.round(v), v => `${Math.round(v)} smp`);
-  wireSlider('slider-dcr-sens', 'disp-dcr-sens', v => dspState.decrackler.sensitivity = v / 100.0);
-  wireSlider('slider-dcr-reduc', 'disp-dcr-reduc', v => dspState.decrackler.crackle_reduction = v / 100.0);
-  wireSlider('slider-dv-reduc', 'disp-dv-reduc', v => dspState.deverb.reduction_amount = v / 100.0);
-  wireSlider('slider-dv-early', 'disp-dv-early', v => dspState.deverb.preserve_early_reflections = v / 100.0);
-  wireSlider('slider-de-reduc', 'disp-de-reduc', v => dspState.deesser.reduction_amount = v / 100.0);
-  wireSlider('slider-de-freq', 'disp-de-freq', v => dspState.deesser.frequency_focus_hz = v, v => `${(v/1000).toFixed(1)} kHz`);
+  wireSlider('slider-dn-bleed', 'disp-dn-bleed', v => dspState.denoiser.ambient_bleed = v / 100.0, v => `${Math.round(v)}%`, 'denoiser');
+  wireSlider('slider-dc-sens', 'disp-dc-sens', v => dspState.declicker.sensitivity = v / 100.0, null, 'declicker');
+  wireSlider('slider-dc-width', 'disp-dc-width', v => dspState.declicker.click_width_samples = Math.round(v), v => `${Math.round(v)} smp`, 'declicker');
+  wireSlider('slider-dcr-sens', 'disp-dcr-sens', v => dspState.decrackler.sensitivity = v / 100.0, null, 'decrackler');
+  wireSlider('slider-dcr-reduc', 'disp-dcr-reduc', v => dspState.decrackler.crackle_reduction = v / 100.0, null, 'decrackler');
+  wireSlider('slider-dv-reduc', 'disp-dv-reduc', v => dspState.deverb.reduction_amount = v / 100.0, null, 'deverb');
+  wireSlider('slider-dv-early', 'disp-dv-early', v => dspState.deverb.preserve_early_reflections = v / 100.0, null, 'deverb');
+  wireSlider('slider-de-reduc', 'disp-de-reduc', v => dspState.deesser.reduction_amount = v / 100.0, null, 'deesser');
+  wireSlider('slider-de-freq', 'disp-de-freq', v => dspState.deesser.frequency_focus_hz = v, v => `${(v/1000).toFixed(1)} kHz`, 'deesser');
 
   // Presets Handlers
   const globalPresetSelect = document.getElementById('select-global-preset');
@@ -384,6 +390,10 @@ document.addEventListener('DOMContentLoaded', () => {
       if (d1) d1.innerText = `${Math.round(p.reduction_amount * 100)}%`;
       if (d2) d2.innerText = `${(p.frequency_focus_hz/1000).toFixed(1)} kHz`;
     }
+
+    if (typeof auditionManager !== 'undefined') {
+      auditionManager.notifyParamChange(modKey);
+    }
   }
 
   // Individual Module Preset dropdown changes
@@ -393,6 +403,299 @@ document.addEventListener('DOMContentLoaded', () => {
       sel.onchange = (e) => applyModulePreset(modKey, e.target.value, dspState[modKey].enabled);
     }
   });
+
+  // --- INDEPENDENT MODULE AUDITION & LIVE PREVIEW CONTROLLER ---
+  class AuditionManager {
+    constructor() {
+      this.modules = ['denoiser', 'declicker', 'decrackler', 'deverb', 'deesser'];
+      this.activeMod = null;
+      this.isPlaying = false;
+      this.isBypassed = false;
+      this.audioProc = new Audio();
+      this.audioOrig = new Audio();
+      this.debounceTimer = null;
+
+      this.initEvents();
+    }
+
+    fmtTime(sec) {
+      if (!sec || isNaN(sec)) return "00:00";
+      const m = Math.floor(sec / 60);
+      const s = Math.floor(sec % 60);
+      return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+    }
+
+    initEvents() {
+      this.modules.forEach(mod => {
+        const playBtn = document.getElementById(`btn-play-${mod}`);
+        const abBtn = document.getElementById(`btn-ab-${mod}`);
+        const seek = document.getElementById(`seek-${mod}`);
+
+        if (playBtn) {
+          playBtn.onclick = () => this.togglePreview(mod);
+        }
+
+        if (abBtn) {
+          abBtn.onclick = () => this.toggleAB(mod);
+        }
+
+        if (seek) {
+          seek.addEventListener('input', (e) => {
+            const pct = parseFloat(e.target.value);
+            this.seek(mod, pct);
+          });
+        }
+      });
+
+      this.audioProc.addEventListener('timeupdate', () => this.onTimeUpdate());
+      this.audioProc.addEventListener('ended', () => this.onEnded());
+      this.audioOrig.addEventListener('timeupdate', () => {
+        if (this.isBypassed) this.onTimeUpdate();
+      });
+      this.audioOrig.addEventListener('ended', () => this.onEnded());
+    }
+
+    async togglePreview(mod) {
+      if (this.activeMod === mod && this.isPlaying) {
+        this.pause();
+        return;
+      }
+
+      if (this.activeMod === mod && !this.isPlaying && this.audioProc.src) {
+        this.play(mod);
+        return;
+      }
+
+      this.stopAll();
+      await this.loadAndPlay(mod);
+    }
+
+    async loadAndPlay(mod) {
+      if (!selectedFilePath) {
+        alert("Please insert or select an audio file first to audition.");
+        return;
+      }
+
+      if (deck && deck.isPlaying) {
+        deck.pause();
+      }
+
+      const playBtn = document.getElementById(`btn-play-${mod}`);
+      const txt = document.getElementById(`txt-${mod}`);
+      const icon = document.getElementById(`icon-${mod}`);
+      const deckEl = document.getElementById(`audition-deck-${mod}`);
+
+      if (playBtn) {
+        playBtn.classList.add('loading');
+        if (txt) txt.innerText = "LOADING...";
+        if (icon) icon.innerText = "⏳";
+      }
+
+      try {
+        const res = await fetch('/api/preview/module', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            file_path: selectedFilePath,
+            module_name: mod,
+            params: dspState[mod],
+            stem_id: currentStemData?.stem_id,
+            source_mode: 'original'
+          })
+        });
+
+        if (!res.ok) throw new Error("Failed to load module preview");
+        const data = await res.json();
+
+        this.activeMod = mod;
+        this.isBypassed = false;
+        this.audioProc.src = data.preview_url;
+        this.audioOrig.src = data.original_url;
+
+        const abBtn = document.getElementById(`btn-ab-${mod}`);
+        if (abBtn) {
+          abBtn.classList.remove('bypassed');
+          abBtn.innerText = "A (ACTIVE)";
+        }
+
+        await this.audioProc.play();
+        this.isPlaying = true;
+
+        if (playBtn) {
+          playBtn.classList.remove('loading');
+          playBtn.classList.add('playing');
+          if (txt) txt.innerText = "PAUSE";
+          if (icon) icon.innerText = "⏸";
+        }
+        if (deckEl) deckEl.classList.add('auditioning');
+
+      } catch (err) {
+        console.error("Preview error:", err);
+        alert("Audition error: " + err.message);
+        this.stopAll();
+      }
+    }
+
+    play(mod) {
+      this.isPlaying = true;
+      const targetAudio = this.isBypassed ? this.audioOrig : this.audioProc;
+      targetAudio.play();
+
+      const playBtn = document.getElementById(`btn-play-${mod}`);
+      const txt = document.getElementById(`txt-${mod}`);
+      const icon = document.getElementById(`icon-${mod}`);
+      const deckEl = document.getElementById(`audition-deck-${mod}`);
+
+      if (playBtn) {
+        playBtn.classList.add('playing');
+        if (txt) txt.innerText = "PAUSE";
+        if (icon) icon.innerText = "⏸";
+      }
+      if (deckEl) deckEl.classList.add('auditioning');
+    }
+
+    pause() {
+      this.isPlaying = false;
+      this.audioProc.pause();
+      this.audioOrig.pause();
+
+      if (this.activeMod) {
+        const playBtn = document.getElementById(`btn-play-${this.activeMod}`);
+        const txt = document.getElementById(`txt-${this.activeMod}`);
+        const icon = document.getElementById(`icon-${this.activeMod}`);
+        const deckEl = document.getElementById(`audition-deck-${this.activeMod}`);
+
+        if (playBtn) {
+          playBtn.classList.remove('playing');
+          if (txt) txt.innerText = "PREVIEW";
+          if (icon) icon.innerText = "▶";
+        }
+        if (deckEl) deckEl.classList.remove('auditioning');
+      }
+    }
+
+    seek(mod, pct) {
+      if (this.activeMod !== mod) return;
+      const currentAudio = this.isBypassed ? this.audioOrig : this.audioProc;
+      if (!currentAudio.duration) return;
+
+      const targetTime = (pct / 100.0) * currentAudio.duration;
+      this.audioProc.currentTime = targetTime;
+      this.audioOrig.currentTime = targetTime;
+
+      const timeEl = document.getElementById(`time-${mod}`);
+      if (timeEl) {
+        timeEl.innerText = `${this.fmtTime(targetTime)} / ${this.fmtTime(currentAudio.duration)}`;
+      }
+    }
+
+    toggleAB(mod) {
+      if (this.activeMod !== mod) return;
+      this.isBypassed = !this.isBypassed;
+      const abBtn = document.getElementById(`btn-ab-${mod}`);
+
+      const curTime = this.isBypassed ? this.audioProc.currentTime : this.audioOrig.currentTime;
+      if (this.isBypassed) {
+        this.audioProc.pause();
+        this.audioOrig.currentTime = curTime;
+        if (this.isPlaying) this.audioOrig.play();
+        if (abBtn) {
+          abBtn.classList.add('bypassed');
+          abBtn.innerText = "B (ORIGINAL)";
+        }
+      } else {
+        this.audioOrig.pause();
+        this.audioProc.currentTime = curTime;
+        if (this.isPlaying) this.audioProc.play();
+        if (abBtn) {
+          abBtn.classList.remove('bypassed');
+          abBtn.innerText = "A (ACTIVE)";
+        }
+      }
+    }
+
+    onTimeUpdate() {
+      if (!this.activeMod) return;
+      const currentAudio = this.isBypassed ? this.audioOrig : this.audioProc;
+      const cur = currentAudio.currentTime || 0;
+      const dur = currentAudio.duration || 1;
+
+      const timeEl = document.getElementById(`time-${this.activeMod}`);
+      const seek = document.getElementById(`seek-${this.activeMod}`);
+
+      if (timeEl) {
+        timeEl.innerText = `${this.fmtTime(cur)} / ${this.fmtTime(dur)}`;
+      }
+      if (seek) {
+        seek.value = (cur / dur) * 100;
+      }
+    }
+
+    onEnded() {
+      this.pause();
+      if (this.activeMod) {
+        const seek = document.getElementById(`seek-${this.activeMod}`);
+        if (seek) seek.value = 0;
+      }
+    }
+
+    stopAll() {
+      this.pause();
+      this.modules.forEach(mod => {
+        const playBtn = document.getElementById(`btn-play-${mod}`);
+        const txt = document.getElementById(`txt-${mod}`);
+        const icon = document.getElementById(`icon-${mod}`);
+        const deckEl = document.getElementById(`audition-deck-${mod}`);
+        const abBtn = document.getElementById(`btn-ab-${mod}`);
+
+        if (playBtn) {
+          playBtn.classList.remove('playing', 'loading');
+          if (txt) txt.innerText = "PREVIEW";
+          if (icon) icon.innerText = "▶";
+        }
+        if (deckEl) deckEl.classList.remove('auditioning');
+        if (abBtn) {
+          abBtn.classList.remove('bypassed');
+          abBtn.innerText = "A (ACTIVE)";
+        }
+      });
+      this.activeMod = null;
+    }
+
+    notifyParamChange(mod) {
+      if (this.activeMod === mod && this.isPlaying) {
+        clearTimeout(this.debounceTimer);
+        this.debounceTimer = setTimeout(async () => {
+          try {
+            const curTime = this.isBypassed ? this.audioOrig.currentTime : this.audioProc.currentTime;
+            const res = await fetch('/api/preview/module', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                file_path: selectedFilePath,
+                module_name: mod,
+                params: dspState[mod],
+                stem_id: currentStemData?.stem_id,
+                source_mode: 'original'
+              })
+            });
+            if (res.ok) {
+              const data = await res.json();
+              this.audioProc.src = data.preview_url;
+              this.audioProc.currentTime = curTime;
+              if (!this.isBypassed && this.isPlaying) {
+                this.audioProc.play();
+              }
+            }
+          } catch (e) {
+            console.warn("Live preview re-tune failed:", e);
+          }
+        }, 220);
+      }
+    }
+  }
+
+  const auditionManager = new AuditionManager();
 
   // --- ISOLATION EXECUTION ---
   const runBtn = document.getElementById('btn-run-isolation');
@@ -573,7 +876,10 @@ document.addEventListener('DOMContentLoaded', () => {
   const timeDisplay = document.getElementById('time-display');
 
   if (btnMasterPlay) {
-    btnMasterPlay.onclick = () => deck.togglePlay();
+    btnMasterPlay.onclick = () => {
+      if (typeof auditionManager !== 'undefined') auditionManager.pause();
+      deck.togglePlay();
+    };
   }
 
   deck.onStateChange = (isPlaying) => {
@@ -804,6 +1110,13 @@ document.addEventListener('DOMContentLoaded', () => {
       if (urlParams.get('auto_run') === '1') {
         const rBtn = document.getElementById('btn-run-isolation');
         if (rBtn) rBtn.click();
+      }
+      const prevMod = urlParams.get('preview_mod');
+      if (prevMod) {
+        setTimeout(() => {
+          const pBtn = document.getElementById(`btn-play-${prevMod}`);
+          if (pBtn) pBtn.click();
+        }, 400);
       }
     }, 600);
   }

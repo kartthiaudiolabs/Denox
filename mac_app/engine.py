@@ -2,6 +2,7 @@
 """Core audio isolation engine for the macOS application."""
 
 import dataclasses
+import hashlib
 import json
 import logging
 import math
@@ -36,6 +37,8 @@ logger = logging.getLogger("mac_app.engine")
 SAMPLE_RATE = 48000
 TMP_DIR = pathlib.Path(tempfile.gettempdir()) / "denox_audio"
 TMP_DIR.mkdir(parents=True, exist_ok=True)
+PREVIEWS_DIR = TMP_DIR / "previews"
+PREVIEWS_DIR.mkdir(parents=True, exist_ok=True)
 
 
 def pcm16(wav: np.ndarray) -> np.ndarray:
@@ -364,6 +367,108 @@ def remaster_stem(stem_id: str, dsp_params: Dict[str, Any]) -> Dict[str, Any]:
             "vocal": peaks_vocal,
             "background": peaks_bg,
         }
+    }
+
+
+def generate_module_preview(
+    file_path: str,
+    module_name: str,
+    params: Dict[str, Any],
+    stem_id: Optional[str] = None,
+    source_mode: str = "original",
+) -> Dict[str, Any]:
+    """Generates audition audio for an individual module with current settings."""
+    path = pathlib.Path(file_path)
+    if not path.is_absolute():
+        if not path.exists():
+            examples_p = pathlib.Path("demo/examples") / path.name
+            if examples_p.exists():
+                path = examples_p
+            else:
+                raise FileNotFoundError(f"Source audio file not found: {file_path}")
+
+    # Check if stem_id provided and we want vocal source
+    raw_vocal = None
+    if stem_id:
+        stem_dir = TMP_DIR / stem_id
+        raw_vocal_path = stem_dir / "raw_neural_voice.wav"
+        if raw_vocal_path.exists():
+            raw_vocal, _ = sf.read(str(raw_vocal_path), dtype="float32")
+
+    # Load and resample audio
+    audio, sr = sf.read(str(path), dtype="float32")
+    if audio.ndim > 1:
+        audio = np.mean(audio, axis=1)
+    if sr != SAMPLE_RATE:
+        audio = audio_lib.resample(audio, sr, SAMPLE_RATE)
+
+    duration_sec = round(len(audio) / SAMPLE_RATE, 2)
+
+    # Check hash for caching
+    param_str = json.dumps(params, sort_keys=True)
+    cache_key = hashlib.md5(f"{path.name}_{module_name}_{source_mode}_{param_str}_{stem_id or ''}".encode()).hexdigest()[:16]
+
+    out_filename = f"prev_{module_name}_{cache_key}.wav"
+    orig_filename = f"prev_orig_{cache_key}.wav"
+    out_path = PREVIEWS_DIR / out_filename
+    orig_path = PREVIEWS_DIR / orig_filename
+
+    # Save orig preview if not exists
+    if not orig_path.exists():
+        sf.write(str(orig_path), pcm16(audio), SAMPLE_RATE, subtype="PCM_16")
+
+    if out_path.exists():
+        return {
+            "status": "success",
+            "preview_url": f"/api/preview/audio/{out_filename}?t={time.time()}",
+            "original_url": f"/api/preview/audio/{orig_filename}?t={time.time()}",
+            "duration": duration_sec,
+            "module": module_name
+        }
+
+    # Build specific module config and run it
+    cfg = build_dsp_config({module_name: params})
+
+    if module_name == "denoiser":
+        denoiser = dsp_module.DeNoiser(SAMPLE_RATE)
+        if raw_vocal is None:
+            models = get_engine_models()
+            with models.offline_lock:
+                raw_vocal = models.offline.isolate(audio, SAMPLE_RATE)
+                if isinstance(raw_vocal, torch.Tensor):
+                    raw_vocal = raw_vocal.cpu().numpy()
+        processed, _ = denoiser.process(audio, raw_vocal, cfg.denoiser)
+
+    elif module_name == "declicker":
+        declicker = dsp_module.DeClicker(SAMPLE_RATE)
+        src = raw_vocal if (source_mode == "vocal" and raw_vocal is not None) else audio
+        processed, _ = declicker.process(src, cfg.declicker)
+
+    elif module_name == "decrackler":
+        decrackler = dsp_module.DeCrackler(SAMPLE_RATE)
+        src = raw_vocal if (source_mode == "vocal" and raw_vocal is not None) else audio
+        processed, _ = decrackler.process(src, cfg.decrackler)
+
+    elif module_name == "deverb":
+        deverb = dsp_module.DeVerb(SAMPLE_RATE)
+        src = raw_vocal if (source_mode == "vocal" and raw_vocal is not None) else audio
+        processed = deverb.process(src, cfg.deverb)
+
+    elif module_name == "deesser":
+        deesser = dsp_module.DeEsser(SAMPLE_RATE)
+        src = raw_vocal if (source_mode == "vocal" and raw_vocal is not None) else audio
+        processed = deesser.process(src, cfg.deesser)
+    else:
+        processed = audio
+
+    sf.write(str(out_path), pcm16(processed), SAMPLE_RATE, subtype="PCM_16")
+
+    return {
+        "status": "success",
+        "preview_url": f"/api/preview/audio/{out_filename}?t={time.time()}",
+        "original_url": f"/api/preview/audio/{orig_filename}?t={time.time()}",
+        "duration": duration_sec,
+        "module": module_name
     }
 
 

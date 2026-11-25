@@ -199,6 +199,23 @@
               </div>
               <input type="range" id="slider-dn-bleed" min="0" max="30" value="0" step="1" class="cyber-range">
             </div>
+
+            <!-- LIVE AUDITION & SEEK BAR -->
+            <div class="module-audition-deck" id="audition-deck-denoiser">
+              <div class="audition-controls-row">
+                <button class="btn-audition-play" id="btn-play-denoiser" title="Audition this module live">
+                  <span class="audition-icon" id="icon-denoiser">▶</span>
+                  <span class="audition-txt" id="txt-denoiser">PREVIEW</span>
+                </button>
+                <button class="btn-audition-ab" id="btn-ab-denoiser" title="Toggle Processed (A) vs Original (B)">
+                  A (ACTIVE)
+                </button>
+                <div class="audition-time" id="time-denoiser">00:00 / 00:00</div>
+              </div>
+              <div class="audition-seek-wrapper">
+                <input type="range" class="audition-seek-bar" id="seek-denoiser" min="0" max="100" value="0" step="0.1" title="Scrub timeline">
+              </div>
+            </div>
           </div>
 
           <!-- MODULE 2: DE-CLICKER (IMPULSE & MOUTH NOISE) -->
@@ -260,6 +277,23 @@
                   <span id="disp-dc-width">18 smp</span>
                 </div>
                 <input type="range" id="slider-dc-width" min="4" max="64" value="18" class="cyber-range">
+              </div>
+
+              <!-- LIVE AUDITION & SEEK BAR -->
+              <div class="module-audition-deck" id="audition-deck-declicker">
+                <div class="audition-controls-row">
+                  <button class="btn-audition-play" id="btn-play-declicker" title="Audition this module live">
+                    <span class="audition-icon" id="icon-declicker">▶</span>
+                    <span class="audition-txt" id="txt-declicker">PREVIEW</span>
+                  </button>
+                  <button class="btn-audition-ab" id="btn-ab-declicker" title="Toggle Processed (A) vs Original (B)">
+                    A (ACTIVE)
+                  </button>
+                  <div class="audition-time" id="time-declicker">00:00 / 00:00</div>
+                </div>
+                <div class="audition-seek-wrapper">
+                  <input type="range" class="audition-seek-bar" id="seek-declicker" min="0" max="100" value="0" step="0.1" title="Scrub timeline">
+                </div>
               </div>
             </div>
 
@@ -323,6 +357,23 @@
                 </div>
                 <input type="range" id="slider-dcr-reduc" min="0" max="100" value="65" class="cyber-range">
               </div>
+
+              <!-- LIVE AUDITION & SEEK BAR -->
+              <div class="module-audition-deck" id="audition-deck-decrackler">
+                <div class="audition-controls-row">
+                  <button class="btn-audition-play" id="btn-play-decrackler" title="Audition this module live">
+                    <span class="audition-icon" id="icon-decrackler">▶</span>
+                    <span class="audition-txt" id="txt-decrackler">PREVIEW</span>
+                  </button>
+                  <button class="btn-audition-ab" id="btn-ab-decrackler" title="Toggle Processed (A) vs Original (B)">
+                    A (ACTIVE)
+                  </button>
+                  <div class="audition-time" id="time-decrackler">00:00 / 00:00</div>
+                </div>
+                <div class="audition-seek-wrapper">
+                  <input type="range" class="audition-seek-bar" id="seek-decrackler" min="0" max="100" value="0" step="0.1" title="Scrub timeline">
+                </div>
+              </div>
             </div>
 
             <!-- MODULE 4: DE-VERB (DEREVERBERATION) -->
@@ -385,6 +436,23 @@
                 </div>
                 <input type="range" id="slider-dv-early" min="0" max="100" value="40" class="cyber-range">
               </div>
+
+              <!-- LIVE AUDITION & SEEK BAR -->
+              <div class="module-audition-deck" id="audition-deck-deverb">
+                <div class="audition-controls-row">
+                  <button class="btn-audition-play" id="btn-play-deverb" title="Audition this module live">
+                    <span class="audition-icon" id="icon-deverb">▶</span>
+                    <span class="audition-txt" id="txt-deverb">PREVIEW</span>
+                  </button>
+                  <button class="btn-audition-ab" id="btn-ab-deverb" title="Toggle Processed (A) vs Original (B)">
+                    A (ACTIVE)
+                  </button>
+                  <div class="audition-time" id="time-deverb">00:00 / 00:00</div>
+                </div>
+                <div class="audition-seek-wrapper">
+                  <input type="range" class="audition-seek-bar" id="seek-deverb" min="0" max="100" value="0" step="0.1" title="Scrub timeline">
+                </div>
+              </div>
             </div>
 
             <!-- MODULE 5: DE-ESSER (HARSH SIBILANCE) -->
@@ -446,6 +514,23 @@
                   <span id="disp-de-freq">6.5 kHz</span>
                 </div>
                 <input type="range" id="slider-de-freq" min="4000" max="9500" value="6500" step="100" class="cyber-range">
+              </div>
+
+              <!-- LIVE AUDITION & SEEK BAR -->
+              <div class="module-audition-deck" id="audition-deck-deesser">
+                <div class="audition-controls-row">
+                  <button class="btn-audition-play" id="btn-play-deesser" title="Audition this module live">
+                    <span class="audition-icon" id="icon-deesser">▶</span>
+                    <span class="audition-txt" id="txt-deesser">PREVIEW</span>
+                  </button>
+                  <button class="btn-audition-ab" id="btn-ab-deesser" title="Toggle Processed (A) vs Original (B)">
+                    A (ACTIVE)
+                  </button>
+                  <div class="audition-time" id="time-deesser">00:00 / 00:00</div>
+                </div>
+                <div class="audition-seek-wrapper">
+                  <input type="range" class="audition-seek-bar" id="seek-deesser" min="0" max="100" value="0" step="0.1" title="Scrub timeline">
+                </div>
               </div>
             </div>
           </div>

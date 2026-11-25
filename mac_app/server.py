@@ -52,6 +52,14 @@ class RemasterRequest(BaseModel):
     dsp: Dict[str, Any]
 
 
+class ModulePreviewRequest(BaseModel):
+    file_path: str
+    module_name: str
+    params: Dict[str, Any]
+    stem_id: Optional[str] = None
+    source_mode: str = "original"
+
+
 class SampleRequest(BaseModel):
     sample_name: str
 
@@ -171,6 +179,32 @@ async def serve_audio(stem_id: str, filename: str):
     file_path = engine.TMP_DIR / stem_id / filename
     if not file_path.exists():
         raise HTTPException(status_code=404, detail="Audio file not found")
+    return FileResponse(path=str(file_path), media_type="audio/wav", filename=filename)
+
+
+@app.post("/api/preview/module")
+async def preview_module(req: ModulePreviewRequest):
+    """Generates audition audio for an individual module with current settings."""
+    try:
+        result = engine.generate_module_preview(
+            file_path=req.file_path,
+            module_name=req.module_name,
+            params=req.params,
+            stem_id=req.stem_id,
+            source_mode=req.source_mode,
+        )
+        return result
+    except Exception as e:
+        logger.exception("Module preview failed")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/preview/audio/{filename}")
+async def serve_preview_audio(filename: str):
+    """Serves generated module preview audio files with Range support."""
+    file_path = engine.PREVIEWS_DIR / filename
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="Preview audio not found")
     return FileResponse(path=str(file_path), media_type="audio/wav", filename=filename)
 
 
