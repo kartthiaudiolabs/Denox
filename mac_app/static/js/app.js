@@ -3,8 +3,11 @@
 
 document.addEventListener('DOMContentLoaded', () => {
   const deck = new StemsAudioDeck();
-  const visualizer = new MasterVisualizer('master-spectrum-canvas');
-  visualizer.start();
+  const specCanvas = document.getElementById('master-spectrum-canvas');
+  if (specCanvas) {
+    const visualizer = new MasterVisualizer('master-spectrum-canvas');
+    visualizer.start();
+  }
 
   let currentStemData = null;
   let activeTab = 'quantum';

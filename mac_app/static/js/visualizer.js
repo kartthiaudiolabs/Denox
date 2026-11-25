@@ -34,7 +34,7 @@ class MasterVisualizer {
   }
 
   start() {
-    if (this.isRunning) return;
+    if (!this.canvas || this.isRunning) return;
     this.isRunning = true;
     this.render();
   }
