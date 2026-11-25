@@ -1,0 +1,11 @@
+# The fastenhancer venv (FastEnhancer-L): Python 3.11, the exact packages that
+# rendered the board. setupfield.sh installs it with uv pip sync.
+cffi==2.1.0
+flatbuffers==25.12.19
+numpy==2.4.6
+onnxruntime==1.28.0
+packaging==26.2
+protobuf==6.31.1
+pycparser==3.0
+soundfile==0.14.0
+typing-extensions==4.16.0

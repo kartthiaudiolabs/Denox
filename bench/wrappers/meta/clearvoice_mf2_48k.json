@@ -1,0 +1,22 @@
+{
+ "renormalizes": false,
+ "display": "ClearerVoice MossFormer2_SE_48K",
+ "mechanism": "masking",
+ "native_sr": 48000,
+ "fullband": true,
+ "license_code": "Apache-2.0",
+ "license_weights": "Apache-2.0",
+ "commercial_ok": true,
+ "repo": "https://github.com/modelscope/ClearerVoice-Studio",
+ "weights": "alibabasglab/MossFormer2_SE_48K (Hugging Face): last_best_checkpoint.pt",
+ "notes": "MossFormer2 mask estimation on a 48 kHz STFT, through the clearvoice package's own API. Inputs over 20 s are decoded in 4 s windows, as the release's configuration sets. The filterbank dither the package draws at random is seeded per file, so renders are reproducible.",
+ "source_dir": "clearvoice",
+ "weight_globs": [
+  "checkpoints/MossFormer2_SE_48K/last_best_checkpoint.pt"
+ ],
+ "package_dirs": [
+  "clearvoice"
+ ],
+ "path_switch_seconds": 20.0,
+ "precision": "fp32"
+}

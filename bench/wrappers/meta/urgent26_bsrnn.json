@@ -1,0 +1,18 @@
+{
+ "renormalizes": true,
+ "display": "URGENT26 BSRNN baseline (official, 48k, shipped peak normalisation)",
+ "mechanism": "masking",
+ "native_sr": 48000,
+ "fullband": true,
+ "license_code": "Apache-2.0",
+ "license_weights": "see upstream",
+ "commercial_ok": null,
+ "repo": "https://github.com/urgent-challenge/urgent2026_challenge_track1",
+ "weights": "lichenda/icassp_2026_urgent_baseline (Hugging Face): bsrnn.ckpt",
+ "notes": "Sampling-frequency independent; fed 48 kHz here. The model's own output is at a scale of its own (peaks past full scale: a scale-invariant training loss), so the official script's peak normalisation to 0.9 is kept as the level the shipped baseline delivers. VIBE measures that level change on clean speech, reports it in fidelity's level term and undoes it before reading suppression, the high-band error and deletion. The FlowSE baseline's model keeps the input's scale, so its script step is left out.",
+ "source_dir": "urgent26",
+ "weight_globs": [
+  "ckpts/bsrnn.ckpt"
+ ],
+ "precision": "fp32"
+}

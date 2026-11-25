@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+# macOS Executable for Denox.app
+
+APP_DIR="$(cd "$(dirname "$0")/../../.." && pwd)"
+cd "$APP_DIR" || exit 1
+
+VENV_PYTHON="$APP_DIR/.venv/bin/python"
+
+if [ -f "$VENV_PYTHON" ]; then
+    exec "$VENV_PYTHON" -m mac_app.main "$@"
+else
+    exec python3 -m mac_app.main "$@"
+fi

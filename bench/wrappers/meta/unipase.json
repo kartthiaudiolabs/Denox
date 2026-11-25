@@ -1,0 +1,19 @@
+{
+ "renormalizes": true,
+ "display": "UniPASE (TASLP 2026, 16 kHz core, post-net to 48 kHz)",
+ "mechanism": "generative (phonetic representation to adapter to vocoder, post-net to 48 kHz)",
+ "native_sr": 48000,
+ "fullband": true,
+ "license_code": "MIT",
+ "license_weights": "Apache-2.0",
+ "commercial_ok": true,
+ "repo": "https://github.com/Xiaobin-Rong/unipase",
+ "weights": "Xiaobin-Rong/unipase (Hugging Face): DeWavLM-Omni, Adapter, Vocoder_DWO-L1, PostNet",
+ "notes": "The PASE family's universal member (arXiv 2604.14606) and the generative branch of GAP-URGENet: DeWavLM-Omni phonetic representations, an adapter, a 16 kHz vocoder and a post-net that generates the band up to 24 kHz before resampling to the input rate; input content above 8 kHz does not reach the output. Run through the release's inference modules (whole files up to 20 s, segmented beyond), checkpoints passed by path. The release scales every output to the input's peak; its packet-loss concealment, on by default, fills runs of exact digital zeros. Re-synthesises the waveform without exact sample alignment to the input (a few samples, differing from item to item), so the residual-based readings (suppression, SI-SDR, the fidelity axis) read the misalignment as noise and loss, unlike GAP-URGENet, whose predictive branch keeps it aligned; read NISQA, speaker similarity, the deletion rate, downstream ASR and the content check for this row.",
+ "source_dir": "unipase",
+ "weight_globs": [
+  "ckpts/*.pt"
+ ],
+ "path_switch_seconds": 20.0,
+ "precision": "fp32"
+}

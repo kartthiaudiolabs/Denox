@@ -1,0 +1,9 @@
+# Copyright 2026 Inworld AI — Apache-2.0
+# Artifact construction and metadata validation on Linux / CPython 3.10.
+# Update these reviewed versions, regenerate build.txt, then verify both projects.
+pip==26.3
+build==1.6.1
+hatchling==1.33.0
+hatch-fancy-pypi-readme==25.1.0
+twine==7.0.0
+readme-renderer[md]==46.0

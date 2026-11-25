@@ -1,0 +1,802 @@
+{
+ "schema_version": 1,
+ "version": "1",
+ "minimum_gap": 1e-06,
+ "changelog": [
+  {
+   "version": "0",
+   "reason": "The anchor policy as published: each sub-metric runs from a fixed floor (the unprocessed input, or a declared constant) at 0 to a fixed ceiling (the clean reference, or a declared constant) at 1, so the scale belongs to the set and not to the systems ranked on it."
+  },
+  {
+   "version": "1",
+   "reason": "The pause-level floor follows the unprocessed recordings again. The real-recording pause rows now pool every real family (real_everyday was left out) and bound each item's level within 20 dB of its input's, so INPUT reads -25.0 dB where it read -20.7. The declared floor and its swept range move with it; every other declared endpoint still agrees with INPUT and REF within its tolerance."
+  }
+ ],
+ "rules": [
+  {
+   "conditions": [
+    "babble@+4",
+    "babble@+0",
+    "babble@-5"
+   ],
+   "metrics": [
+    "babble_supp_db",
+    "babble_supp_db_nb"
+   ],
+   "direction": -1,
+   "floor": {
+    "value": 0,
+    "verify": {
+     "source": "INPUT",
+     "tolerance": 0.05
+    },
+    "rationale": "The unchanged mixture removes nothing: zero by definition of the metric."
+   },
+   "ceiling": {
+    "value": -20,
+    "range": [
+     -30,
+     -15
+    ],
+    "rationale": "Policy saturation after 20 dB of reconstruction-error reduction; not an audibility guarantee."
+   }
+  },
+  {
+   "conditions": [
+    "ambience@-5",
+    "stationary@-5",
+    "traffic@-5"
+   ],
+   "metrics": [
+    "si_sdr"
+   ],
+   "direction": 1,
+   "floor": {
+    "value": -5,
+    "verify": {
+     "source": "INPUT",
+     "tolerance": 0.25
+    },
+    "rationale": "The mixture's SI-SDR is the condition's nominal SNR by construction."
+   },
+   "ceiling": {
+    "value": 20,
+    "range": [
+     15,
+     30
+    ],
+    "rationale": "Finite policy ceiling avoids the unbounded identity-reference SI-SDR."
+   }
+  },
+  {
+   "conditions": [
+    "ambience@-5",
+    "stationary@-5",
+    "traffic@-5"
+   ],
+   "metrics": [
+    "si_sdr_nb"
+   ],
+   "direction": 1,
+   "floor": {
+    "value": -5,
+    "verify": {
+     "source": "INPUT",
+     "tolerance": 1.5
+    },
+    "rationale": "Nominal SNR; inside 0-8 kHz a bed with energy above the band reads up to a decibel higher."
+   },
+   "ceiling": {
+    "value": 20,
+    "range": [
+     15,
+     30
+    ],
+    "rationale": "Finite policy ceiling avoids the unbounded identity-reference SI-SDR."
+   }
+  },
+  {
+   "conditions": [
+    "music@-6"
+   ],
+   "metrics": [
+    "si_sdr",
+    "si_sdr_nb"
+   ],
+   "direction": 1,
+   "floor": {
+    "value": -6,
+    "verify": {
+     "source": "INPUT",
+     "tolerance": 0.25
+    },
+    "rationale": "The mixture's SI-SDR is the condition's nominal SNR by construction."
+   },
+   "ceiling": {
+    "value": 20,
+    "range": [
+     15,
+     30
+    ],
+    "rationale": "Finite policy ceiling avoids the unbounded identity-reference SI-SDR."
+   }
+  },
+  {
+   "conditions": [
+    "_deletion"
+   ],
+   "metrics": [
+    "pct"
+   ],
+   "direction": -1,
+   "floor": {
+    "value": 5,
+    "range": [
+     2,
+     10
+    ],
+    "rationale": "Five percent deleted primary segments is the declared failure floor."
+   },
+   "ceiling": {
+    "value": 0,
+    "rationale": "No primary segment deletion is the target."
+   }
+  },
+  {
+   "conditions": [
+    "babble@+4"
+   ],
+   "metrics": [
+    "kept_coh_p10",
+    "kept_coh_nb_p10"
+   ],
+   "direction": 1,
+   "floor": {
+    "value": -10,
+    "range": [
+     -20,
+     -6
+    ],
+    "rationale": "Ten dB attenuation of quiet coherent voice is the declared failure floor."
+   },
+   "ceiling": {
+    "value": 0,
+    "rationale": "Preserving the reference level closes the gap; amplification earns no extra credit."
+   }
+  },
+  {
+   "conditions": [
+    "babble@+4"
+   ],
+   "metrics": [
+    "spk_sim",
+    "spk_sim_nb"
+   ],
+   "direction": 1,
+   "floor": {
+    "value": 0.95,
+    "range": [
+     0.9,
+     0.96
+    ],
+    "verify": {
+     "source": "INPUT",
+     "tolerance": 0.02
+    },
+    "rationale": "Speaker similarity of the unprocessed mixture at this level: a system should not do worse than leaving the voice alone."
+   },
+   "ceiling": {
+    "value": 1.0,
+    "verify": {
+     "source": "REF",
+     "tolerance": 0.005
+    },
+    "rationale": "Self-similarity of the reference under the same embedding."
+   }
+  },
+  {
+   "conditions": [
+    "clean"
+   ],
+   "metrics": [
+    "kept_coh_p10",
+    "kept_coh_nb_p10"
+   ],
+   "direction": 1,
+   "floor": {
+    "value": -10,
+    "range": [
+     -20,
+     -6
+    ],
+    "rationale": "Ten dB off the quiet blocks of a voice nothing competed with is audible deletion: the preservation axis's scale."
+   },
+   "ceiling": {
+    "value": 0,
+    "verify": {
+     "source": "INPUT",
+     "tolerance": 0.05
+    },
+    "rationale": "The untouched recording keeps all of it; amplification earns no extra credit."
+   }
+  },
+  {
+   "conditions": [
+    "clean"
+   ],
+   "metrics": [
+    "_hf_err"
+   ],
+   "direction": -1,
+   "floor": {
+    "value": 3,
+    "range": [
+     1.5,
+     4
+    ],
+    "rationale": "Three dB mean absolute error over 8-24 kHz is a dull or bright copy of the recording."
+   },
+   "ceiling": {
+    "value": 0.5,
+    "range": [
+     0,
+     1
+    ],
+    "rationale": "Band-level differences under about half a decibel are not heard."
+   }
+  },
+  {
+   "conditions": [
+    "clean"
+   ],
+   "metrics": [
+    "_level_err"
+   ],
+   "direction": -1,
+   "floor": {
+    "value": 6,
+    "range": [
+     3,
+     9
+    ],
+    "rationale": "A six dB level change is a different recording."
+   },
+   "ceiling": {
+    "value": 1,
+    "range": [
+     0.5,
+     2
+    ],
+    "rationale": "A level step under about one decibel is not heard."
+   }
+  },
+  {
+   "conditions": [
+    "clean"
+   ],
+   "metrics": [
+    "spk_sim",
+    "spk_sim_nb"
+   ],
+   "direction": 1,
+   "floor": {
+    "value": 0.95,
+    "range": [
+     0.9,
+     0.98
+    ],
+    "rationale": "The timbre axis's floor: the similarity a noisy mixture still reaches."
+   },
+   "ceiling": {
+    "value": 1.0,
+    "verify": {
+     "source": "INPUT",
+     "tolerance": 0.005
+    },
+    "rationale": "Self-similarity of the untouched recording under the same embedding."
+   }
+  },
+  {
+   "conditions": [
+    "clean"
+   ],
+   "metrics": [
+    "nisqa_mos"
+   ],
+   "direction": 1,
+   "floor": {
+    "value": 4.0,
+    "range": [
+     3.5,
+     4.25
+    ],
+    "rationale": "Half a point of predicted quality lost on speech that was already clean is damage."
+   },
+   "ceiling": {
+    "value": 4.5,
+    "verify": {
+     "source": "INPUT",
+     "tolerance": 0.1
+    },
+    "rationale": "Predicted quality of the untouched clean recordings; a gain over them earns nothing."
+   }
+  },
+  {
+   "conditions": [
+    "babble@+4"
+   ],
+   "metrics": [
+    "nisqa_mos"
+   ],
+   "direction": 1,
+   "floor": {
+    "value": 2.0,
+    "range": [
+     1.0,
+     2.5
+    ],
+    "verify": {
+     "source": "INPUT",
+     "tolerance": 0.3
+    },
+    "rationale": "Predicted quality of the unprocessed mixture at this level."
+   },
+   "ceiling": {
+    "value": 4.5,
+    "range": [
+     4.0,
+     5.0
+    ],
+    "verify": {
+     "source": "REF",
+     "tolerance": 0.2
+    },
+    "rationale": "Predicted quality of clean studio references: a target, not a perceptual upper bound."
+   }
+  },
+  {
+   "conditions": [
+    "real_noisy"
+   ],
+   "metrics": [
+    "nisqa_mos"
+   ],
+   "direction": 1,
+   "floor": {
+    "value": 2.4,
+    "range": [
+     1.0,
+     2.8
+    ],
+    "verify": {
+     "source": "INPUT",
+     "tolerance": 0.3
+    },
+    "rationale": "Predicted quality of the unprocessed recordings."
+   },
+   "ceiling": {
+    "value": 5,
+    "range": [
+     4.0,
+     5.0
+    ],
+    "rationale": "Nominal quality-scale maximum; these recordings have no clean reference."
+   }
+  },
+  {
+   "conditions": [
+    "ambience@+5",
+    "events@+5",
+    "cheer@+5",
+    "wind@+0",
+    "stationary@+5",
+    "traffic@+0",
+    "appliance@+5",
+    "tools@+5",
+    "household@+0",
+    "animals@+0",
+    "rain@+0"
+   ],
+   "metrics": [
+    "spk_sim",
+    "spk_sim_nb"
+   ],
+   "direction": 1,
+   "floor": {
+    "value": 0.95,
+    "verify": {
+     "source": "INPUT",
+     "tolerance": 0.04
+    },
+    "range": [
+     0.9,
+     0.96
+    ],
+    "rationale": "Speaker similarity of the unprocessed mixture at the level of each noise family where it reads about 0.95 (0.91 to 0.98 over the families and views), the scale of crowd chatter at +4 dB: a system should not do worse than leaving the voice alone."
+   },
+   "ceiling": {
+    "value": 1.0,
+    "rationale": "Self-similarity of the reference under the same embedding: one by construction, measured under crowd chatter at +4 dB."
+   }
+  },
+  {
+   "conditions": [
+    "nonverbal@+0",
+    "nonverbal_clean"
+   ],
+   "metrics": [
+    "nv_lost_pct"
+   ],
+   "direction": -1,
+   "floor": {
+    "value": 30,
+    "range": [
+     20,
+     50
+    ],
+    "rationale": "Three in ten of the vocal sounds outside speech lost is the declared failure floor."
+   },
+   "ceiling": {
+    "value": 0,
+    "verify": {
+     "source": "INPUT",
+     "tolerance": 0.5
+    },
+    "rationale": "The unprocessed mixture loses none of them: only sounds the bed does not bury are counted."
+   }
+  },
+  {
+   "conditions": [
+    "clean"
+   ],
+   "metrics": [
+    "mag_snr",
+    "mag_snr_nb"
+   ],
+   "direction": 1,
+   "floor": {
+    "value": 10,
+    "range": [
+     5,
+     15
+    ],
+    "rationale": "A spectrum whose error holds a tenth of its energy is another rendition of the recording."
+   },
+   "ceiling": {
+    "value": 30,
+    "range": [
+     25,
+     35
+    ],
+    "rationale": "A re-synthesis that changes no spectrum reads 32 dB (the resynth control); above 30 dB a changed spectrum is not told from an unchanged one."
+   }
+  },
+  {
+   "conditions": [
+    "reverb_real"
+   ],
+   "metrics": [
+    "spk_sim",
+    "spk_sim_nb"
+   ],
+   "direction": 1,
+   "floor": {
+    "value": 0.86,
+    "verify": {
+     "source": "INPUT",
+     "tolerance": 0.02
+    },
+    "range": [
+     0.8,
+     0.9
+    ],
+    "rationale": "Speaker similarity of the recording in its room to the dry voice: a system that leaves the room in place stays here."
+   },
+   "ceiling": {
+    "value": 1.0,
+    "rationale": "Self-similarity of the dry reference under the same embedding: one by construction."
+   }
+  },
+  {
+   "conditions": [
+    "reverb_real"
+   ],
+   "metrics": [
+    "nisqa_mos"
+   ],
+   "direction": 1,
+   "floor": {
+    "value": 2.0,
+    "verify": {
+     "source": "INPUT",
+     "tolerance": 0.3
+    },
+    "range": [
+     1.0,
+     2.5
+    ],
+    "rationale": "Predicted quality of the recordings in their rooms."
+   },
+   "ceiling": {
+    "value": 4.5,
+    "range": [
+     4.0,
+     5.0
+    ],
+    "rationale": "Predicted quality of clean studio references, verified under crowd chatter at +4 dB: a target, not a perceptual upper bound."
+   }
+  },
+  {
+   "conditions": [
+    "babble@+4",
+    "babble@+0",
+    "babble@-5"
+   ],
+   "metrics": [
+    "babble_resid_db",
+    "babble_resid_db_nb"
+   ],
+   "direction": -1,
+   "floor": {
+    "value": 0,
+    "verify": {
+     "source": "INPUT",
+     "tolerance": 0.3
+    },
+    "rationale": "The unchanged mixture removes nothing: zero up to the share of the chatter the voice explains by chance."
+   },
+   "ceiling": {
+    "value": -20,
+    "range": [
+     -25,
+     -15
+    ],
+    "rationale": "Policy saturation after 20 dB of interference removed at the voice's scale, the bound every item is held inside before pooling; not an audibility guarantee. Below the bound no pooled value reaches the ceiling: a stricter ceiling compresses the axis rather than moving its top."
+   }
+  },
+  {
+   "conditions": [
+    "_real_cleanup"
+   ],
+   "metrics": [
+    "pause_resid_db",
+    "pause_resid_db_nb"
+   ],
+   "direction": -1,
+   "floor": {
+    "value": 0,
+    "verify": {
+     "source": "INPUT",
+     "tolerance": 0.05
+    },
+    "rationale": "The unchanged recording leaves every pause as it was: zero by definition of the metric."
+   },
+   "ceiling": {
+    "value": -20,
+    "range": [
+     -25,
+     -15
+    ],
+    "rationale": "Policy saturation after 20 dB of the pauses' audibility-weighted energy removed beyond what the voice lost, the bound every item is held inside before pooling; a pause silenced outright earns no more. Below the bound no pooled value reaches the ceiling: a stricter ceiling compresses the axis rather than moving its top."
+   }
+  },
+  {
+   "conditions": [
+    "_real_quality"
+   ],
+   "metrics": [
+    "nisqa_mos"
+   ],
+   "direction": 1,
+   "floor": {
+    "value": 2.7,
+    "verify": {
+     "source": "INPUT",
+     "tolerance": 0.3
+    },
+    "range": [
+     1.0,
+     3.5
+    ],
+    "rationale": "Predicted quality of the unprocessed recordings, the equal mean of the four families."
+   },
+   "ceiling": {
+    "value": 5,
+    "range": [
+     4.0,
+     5.0
+    ],
+    "rationale": "Nominal quality-scale maximum; these recordings have no clean reference."
+   }
+  },
+  {
+   "conditions": [
+    "_real_cleanup"
+   ],
+   "metrics": [
+    "pause_level_db"
+   ],
+   "direction": -1,
+   "floor": {
+    "value": -25.0,
+    "verify": {
+     "source": "INPUT",
+     "tolerance": 0.3
+    },
+    "range": [
+     -30.0,
+     -20.0
+    ],
+    "rationale": "What the unprocessed recordings hold in their pauses against their own voice, audibility weighted: the pooled mean over the eligible items."
+   },
+   "ceiling": {
+    "value": -45,
+    "range": [
+     -55,
+     -35
+    ],
+    "rationale": "The cap at which a residual under the voice is taken as inaudible (scoreresidual.LEVEL_CLIP_DB): every item saturates there, so no item earns more than its own distance to it; the swept range is centred on the declared value, as every range is."
+   }
+  },
+  {
+   "conditions": [
+    "coroom@pause",
+    "coroom@speech",
+    "coroom@both"
+   ],
+   "metrics": [
+    "event_resid_db"
+   ],
+   "direction": -1,
+   "floor": {
+    "value": 0,
+    "verify": {
+     "source": "INPUT",
+     "tolerance": 0.05
+    },
+    "rationale": "The unchanged mixture leaves the added noise as it was: zero by definition of the metric."
+   },
+   "ceiling": {
+    "value": -20,
+    "range": [
+     -25,
+     -15
+    ],
+    "rationale": "Policy saturation after 20 dB of the added noise removed over the labelled spans, the bound every item is held inside before pooling; a span silenced outright earns no more. Below the bound no pooled value reaches the ceiling: a stricter ceiling compresses the axis rather than moving its top."
+   }
+  },
+  {
+   "conditions": [
+    "coroom@floor",
+    "coroom@both"
+   ],
+   "metrics": [
+    "floor_resid_db"
+   ],
+   "direction": -1,
+   "floor": {
+    "value": 0,
+    "verify": {
+     "source": "INPUT",
+     "tolerance": 0.05
+    },
+    "rationale": "The unchanged mixture leaves the added noise as it was: zero by definition of the metric."
+   },
+   "ceiling": {
+    "value": -20,
+    "range": [
+     -25,
+     -15
+    ],
+    "rationale": "Policy saturation after 20 dB of the added noise removed over the labelled spans, the bound every item is held inside before pooling; a span silenced outright earns no more. Below the bound no pooled value reaches the ceiling: a stricter ceiling compresses the axis rather than moving its top."
+   }
+  },
+  {
+   "conditions": [
+    "_coroom"
+   ],
+   "metrics": [
+    "voice_level_db"
+   ],
+   "direction": 1,
+   "floor": {
+    "value": -3,
+    "range": [
+     -4.5,
+     -1.5
+    ],
+    "rationale": "Three decibels of the voice lost on its loudest speech frames, with the noise there or against the reference beyond the room's share, is the declared failure floor; a louder voice earns nothing beyond the ceiling."
+   },
+   "ceiling": {
+    "value": 0,
+    "verify": {
+     "source": "INPUT",
+     "tolerance": 0.05
+    },
+    "rationale": "The unchanged mixture keeps the voice's level: zero by definition of the metric."
+   }
+  },
+  {
+   "conditions": [
+    "talker@+5"
+   ],
+   "metrics": [
+    "si_sdr",
+    "si_sdr_nb"
+   ],
+   "direction": 1,
+   "floor": {
+    "value": 5,
+    "verify": {
+     "source": "INPUT",
+     "tolerance": 0.25
+    },
+    "rationale": "The mixture's SI-SDR is the condition's nominal SNR by construction: the competing talker 5 dB under the voice."
+   },
+   "ceiling": {
+    "value": 20,
+    "range": [
+     15,
+     30
+    ],
+    "rationale": "The same finite ceiling as the other SI-SDR rows; the competing talker removed to 20 dB is a clean voice."
+   }
+  },
+  {
+   "conditions": [
+    "srsweep_8k",
+    "srsweep_16k"
+   ],
+   "metrics": [
+    "band_added_db"
+   ],
+   "direction": 1,
+   "floor": {
+    "value": -0.85,
+    "range": [
+     -3.0,
+     0.0
+    ],
+    "verify": {
+     "source": "INPUT",
+     "tolerance": 0.4
+    },
+    "rationale": "The band-limited input holds nothing above its band; the row reads it against the band-limited reference, less the mean of the bands inside, where the mixture carries the noise the reference does not, so the input sits a little under zero (verified against INPUT)."
+   },
+   "ceiling": {
+    "value": 40,
+    "range": [
+     30,
+     60
+    ],
+    "rationale": "A band above the input filled to the level of the band inside it reads about 40 dB over the empty reference band. The set holds no reference above the input's band, so the ceiling is declared, and the quality rows beside it say whether what was added sounds like speech."
+   }
+  },
+  {
+   "conditions": [
+    "srsweep_8k",
+    "srsweep_16k"
+   ],
+   "metrics": [
+    "spk_sim"
+   ],
+   "direction": 1,
+   "floor": {
+    "value": 0.94,
+    "range": [
+     0.9,
+     0.97
+    ],
+    "verify": {
+     "source": "INPUT",
+     "tolerance": 0.02
+    },
+    "rationale": "The band-limited input's speaker similarity to the reference band-limited the same way, with the noise it carries."
+   },
+   "ceiling": {
+    "value": 1.0,
+    "rationale": "The reference's own similarity to itself. A band filled with anything but the speaker lowers the row, so the energy row beside it is not paid for junk."
+   }
+  }
+ ]
+}

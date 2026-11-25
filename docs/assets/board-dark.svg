@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1040" height="356" viewBox="0 0 1040 356" role="img" aria-label="Inworld VIBE full-band tier, denoising score per system">
+<rect width="100%" height="100%" fill="#0D1117"/>
+<text x="28.0" y="36.0" font-family="Instrument Sans, Helvetica Neue, Helvetica, Arial, sans-serif" font-size="16" font-weight="normal" fill="#B4AFA3" text-anchor="start">Denoising score, higher is better. Gaps under 0.03 are ties.</text>
+<line x1="330.0" y1="66.0" x2="330.0" y2="290.0" stroke="#30363D" stroke-width="1"/>
+<text x="330.0" y="308.0" font-family="Geist Mono, SFMono-Regular, Menlo, Consolas, monospace" font-size="13.5" font-weight="normal" fill="#89857C" text-anchor="middle">0</text>
+<line x1="486.5" y1="66.0" x2="486.5" y2="290.0" stroke="#30363D" stroke-width="1"/>
+<text x="486.5" y="308.0" font-family="Geist Mono, SFMono-Regular, Menlo, Consolas, monospace" font-size="13.5" font-weight="normal" fill="#89857C" text-anchor="middle">0.25</text>
+<line x1="643.0" y1="66.0" x2="643.0" y2="290.0" stroke="#30363D" stroke-width="1"/>
+<text x="643.0" y="308.0" font-family="Geist Mono, SFMono-Regular, Menlo, Consolas, monospace" font-size="13.5" font-weight="normal" fill="#89857C" text-anchor="middle">0.5</text>
+<line x1="799.5" y1="66.0" x2="799.5" y2="290.0" stroke="#30363D" stroke-width="1"/>
+<text x="799.5" y="308.0" font-family="Geist Mono, SFMono-Regular, Menlo, Consolas, monospace" font-size="13.5" font-weight="normal" fill="#89857C" text-anchor="middle">0.75</text>
+<line x1="956.0" y1="66.0" x2="956.0" y2="290.0" stroke="#30363D" stroke-width="1"/>
+<text x="956.0" y="308.0" font-family="Geist Mono, SFMono-Regular, Menlo, Consolas, monospace" font-size="13.5" font-weight="normal" fill="#89857C" text-anchor="middle">1</text>
+<path d="M330.0,81.0 h476.5 a4,4 0 0 1 4,4 v14 a4,4 0 0 1 -4,4 h-476.5 z" fill="#1A9B58"/>
+<text x="316.0" y="98.0" font-family="Instrument Sans, Helvetica Neue, Helvetica, Arial, sans-serif" font-size="16" font-weight="normal" fill="#EEEAE0" text-anchor="end">Inworld Voice Isolator</text>
+<text x="818.5" y="98.0" font-family="Geist Mono, SFMono-Regular, Menlo, Consolas, monospace" font-size="15" font-weight="600" fill="#EEEAE0" text-anchor="start">0.768</text>
+<path d="M330.0,117.0 h445.3 a4,4 0 0 1 4,4 v14 a4,4 0 0 1 -4,4 h-445.3 z" fill="#1A9B58"/>
+<text x="316.0" y="134.0" font-family="Instrument Sans, Helvetica Neue, Helvetica, Arial, sans-serif" font-size="16" font-weight="normal" fill="#EEEAE0" text-anchor="end">Inworld Voice Isolator realtime*</text>
+<text x="787.3" y="134.0" font-family="Geist Mono, SFMono-Regular, Menlo, Consolas, monospace" font-size="15" font-weight="600" fill="#EEEAE0" text-anchor="start">0.718</text>
+<path d="M330.0,153.0 h430.9 a4,4 0 0 1 4,4 v14 a4,4 0 0 1 -4,4 h-430.9 z" fill="#9A9089"/>
+<text x="316.0" y="170.0" font-family="Instrument Sans, Helvetica Neue, Helvetica, Arial, sans-serif" font-size="16" font-weight="normal" fill="#EEEAE0" text-anchor="end">ClearerVoice MossFormer2_SE_48K</text>
+<text x="772.9" y="170.0" font-family="Geist Mono, SFMono-Regular, Menlo, Consolas, monospace" font-size="15" font-weight="600" fill="#EEEAE0" text-anchor="start">0.695</text>
+<path d="M330.0,189.0 h400.5 a4,4 0 0 1 4,4 v14 a4,4 0 0 1 -4,4 h-400.5 z" fill="#9A9089"/>
+<text x="316.0" y="206.0" font-family="Instrument Sans, Helvetica Neue, Helvetica, Arial, sans-serif" font-size="16" font-weight="normal" fill="#EEEAE0" text-anchor="end">resemble-enhance</text>
+<text x="742.5" y="206.0" font-family="Geist Mono, SFMono-Regular, Menlo, Consolas, monospace" font-size="15" font-weight="600" fill="#EEEAE0" text-anchor="start">0.646</text>
+<path d="M330.0,225.0 h365.0 a4,4 0 0 1 4,4 v14 a4,4 0 0 1 -4,4 h-365.0 z" fill="#9A9089"/>
+<text x="316.0" y="242.0" font-family="Instrument Sans, Helvetica Neue, Helvetica, Arial, sans-serif" font-size="16" font-weight="normal" fill="#EEEAE0" text-anchor="end">FastEnhancer-L 48k*</text>
+<text x="707.0" y="242.0" font-family="Geist Mono, SFMono-Regular, Menlo, Consolas, monospace" font-size="15" font-weight="600" fill="#EEEAE0" text-anchor="start">0.589</text>
+<path d="M330.0,261.0 h315.1 a4,4 0 0 1 4,4 v14 a4,4 0 0 1 -4,4 h-315.1 z" fill="#9A9089"/>
+<text x="316.0" y="278.0" font-family="Instrument Sans, Helvetica Neue, Helvetica, Arial, sans-serif" font-size="16" font-weight="normal" fill="#EEEAE0" text-anchor="end">DeepFilterNet3*</text>
+<text x="657.1" y="278.0" font-family="Geist Mono, SFMono-Regular, Menlo, Consolas, monospace" font-size="15" font-weight="600" fill="#EEEAE0" text-anchor="start">0.510</text>
+<text x="28.0" y="334.0" font-family="Instrument Sans, Helvetica Neue, Helvetica, Arial, sans-serif" font-size="13.5" font-weight="normal" fill="#89857C" text-anchor="start">* streaming</text>
+<text x="1012.0" y="334.0" font-family="Geist Mono, SFMono-Regular, Menlo, Consolas, monospace" font-size="13" font-weight="normal" fill="#89857C" text-anchor="end">Inworld VIBE v0 · set build f5a6420d67b7ef45…</text>
+</svg>

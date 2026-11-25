@@ -1,0 +1,228 @@
+# Copyright 2026 Inworld AI & Antigravity
+"""FastAPI server for the Voice Isolator Mac application."""
+
+import base64
+import logging
+import os
+import pathlib
+import shutil
+import subprocess
+import tempfile
+import time
+from typing import Any, Dict, List, Optional
+
+from fastapi import FastAPI, File, HTTPException, UploadFile, Request
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel
+
+from mac_app import engine
+
+logger = logging.getLogger("mac_app.server")
+
+BASE_DIR = pathlib.Path(__file__).parent.resolve()
+STATIC_DIR = BASE_DIR / "static"
+REPO_ROOT = BASE_DIR.parent.resolve()
+EXAMPLES_DIR = REPO_ROOT / "demo" / "examples"
+
+app = FastAPI(title="NEO-ISOLATOR // Quantum Audio Studio", version="1.0.0")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+class IsolateRequest(BaseModel):
+    file_path: str
+    model: str = "offline"
+    passes: int = 1
+    precision: str = "auto"
+
+
+class SampleRequest(BaseModel):
+    sample_name: str
+
+
+class ExportRequest(BaseModel):
+    source_path: str
+    target_path: str
+
+
+class RevealRequest(BaseModel):
+    path: str
+
+
+class StreamChunkRequest(BaseModel):
+    session_id: str
+    pcm_base64: str
+    rate: int = 48000
+
+
+class StreamSessionRequest(BaseModel):
+    session_id: str
+    max_seconds: float = 60.0
+
+
+@app.get("/api/telemetry")
+async def get_telemetry():
+    """Returns hardware, model, and system status."""
+    try:
+        return engine.get_system_telemetry()
+    except Exception as e:
+        logger.exception("Failed to get telemetry")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/samples")
+async def list_samples():
+    """Lists available bundled test samples."""
+    samples = []
+    if EXAMPLES_DIR.exists():
+        for p in sorted(EXAMPLES_DIR.glob("sample_*.wav")):
+            samples.append({
+                "name": p.name,
+                "path": str(p),
+                "size_kb": round(p.stat().st_size / 1024, 1),
+            })
+    return {"samples": samples}
+
+
+@app.post("/api/upload")
+async def upload_audio(file: UploadFile = File(...)):
+    """Receives drag & drop uploaded audio file and saves locally for processing."""
+    try:
+        temp_dir = engine.TMP_DIR / "uploads"
+        temp_dir.mkdir(parents=True, exist_ok=True)
+        dest_path = temp_dir / file.filename
+        with dest_path.open("wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+        return {
+            "status": "success",
+            "file_path": str(dest_path),
+            "filename": file.filename,
+            "size": dest_path.stat().st_size
+        }
+    except Exception as e:
+        logger.exception("Upload failed")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/isolate")
+async def run_isolation(req: IsolateRequest):
+    """Executes voice isolation on a file and returns stems and waveforms."""
+    try:
+        result = engine.isolate_file(
+            file_path=req.file_path,
+            model_choice=req.model,
+            offline_passes=req.passes,
+            precision=req.precision
+        )
+        return result
+    except Exception as e:
+        logger.exception("Isolation failed")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/audio/{stem_id}/{filename}")
+async def serve_audio(stem_id: str, filename: str):
+    """Serves generated audio stems with Range support."""
+    file_path = engine.TMP_DIR / stem_id / filename
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="Audio file not found")
+    return FileResponse(path=str(file_path), media_type="audio/wav", filename=filename)
+
+
+@app.post("/api/stream/start")
+async def stream_start(req: StreamSessionRequest):
+    """Initializes a live streaming microphone take."""
+    success = engine.STREAM_MANAGER.create_session(req.session_id, req.max_seconds)
+    if not success:
+        raise HTTPException(status_code=500, detail="Could not create streaming session")
+    return {"status": "ready", "session_id": req.session_id}
+
+
+@app.post("/api/stream/chunk")
+async def stream_chunk(req: StreamChunkRequest):
+    """Pushes a chunk of audio to the live streaming session."""
+    try:
+        raw_bytes = base64.b64decode(req.pcm_base64)
+        samples = np.frombuffer(raw_bytes, dtype=np.int16)
+        update = engine.STREAM_MANAGER.push_chunk(req.session_id, samples, req.rate)
+        if update is None:
+            raise HTTPException(status_code=404, detail="Session not found or finished")
+        return update
+    except Exception as e:
+        logger.exception("Streaming chunk processing failed")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/stream/finish")
+async def stream_finish(req: StreamSessionRequest):
+    """Finishes the streaming session and returns the recorded take stems."""
+    result = engine.STREAM_MANAGER.finish_session(req.session_id)
+    if not result:
+        raise HTTPException(status_code=404, detail="Session not found")
+    return result
+
+
+@app.post("/api/reveal")
+async def reveal_path(req: RevealRequest):
+    """Reveals a file or directory in macOS Finder."""
+    try:
+        target = pathlib.Path(req.path).expanduser().resolve()
+        if target.exists():
+            subprocess.run(["open", "-R", str(target)], check=True)
+            return {"status": "success", "revealed": str(target)}
+        raise HTTPException(status_code=404, detail="Path does not exist")
+    except Exception as e:
+        logger.exception("Reveal in Finder failed")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/export")
+async def export_audio(req: ExportRequest):
+    """Exports a stem to a target location."""
+    try:
+        src = pathlib.Path(req.source_path).resolve()
+        dst = pathlib.Path(req.target_path).resolve()
+        if not src.exists():
+            raise HTTPException(status_code=404, detail="Source file not found")
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(src, dst)
+        return {"status": "success", "exported_to": str(dst)}
+    except Exception as e:
+        logger.exception("Export failed")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/doctor")
+async def run_doctor():
+    """Runs the voice-isolate-doctor checks and returns detailed status."""
+    try:
+        # Run doctor in subprocess to capture exact text
+        proc = subprocess.run(
+            [sys.executable, "-m", "inworld.voice_isolation.doctor", "--json"],
+            capture_output=True,
+            text=True,
+            check=False
+        )
+        output = proc.stdout.strip()
+        return {"status": "success", "output": output}
+    except Exception as e:
+        logger.exception("Doctor check failed")
+        return {"status": "error", "error": str(e)}
+
+
+# Mount static files
+app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
+
+
+@app.get("/")
+async def root():
+    """Serves the main application UI."""
+    return FileResponse(STATIC_DIR / "index.html")

@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1040" height="392" viewBox="0 0 1040 392" role="img" aria-label="Inworld VIBE full-band tier, restoration score per system">
+<rect width="100%" height="100%" fill="#FFFFFF"/>
+<text x="28.0" y="36.0" font-family="Instrument Sans, Helvetica Neue, Helvetica, Arial, sans-serif" font-size="16" font-weight="normal" fill="#57534B" text-anchor="start">Restoration score, higher is better. Gaps under 0.03 are ties.</text>
+<line x1="330.0" y1="66.0" x2="330.0" y2="326.0" stroke="#D7D2CC" stroke-width="1"/>
+<text x="330.0" y="344.0" font-family="Geist Mono, SFMono-Regular, Menlo, Consolas, monospace" font-size="13.5" font-weight="normal" fill="#69665E" text-anchor="middle">0</text>
+<line x1="486.5" y1="66.0" x2="486.5" y2="326.0" stroke="#D7D2CC" stroke-width="1"/>
+<text x="486.5" y="344.0" font-family="Geist Mono, SFMono-Regular, Menlo, Consolas, monospace" font-size="13.5" font-weight="normal" fill="#69665E" text-anchor="middle">0.25</text>
+<line x1="643.0" y1="66.0" x2="643.0" y2="326.0" stroke="#D7D2CC" stroke-width="1"/>
+<text x="643.0" y="344.0" font-family="Geist Mono, SFMono-Regular, Menlo, Consolas, monospace" font-size="13.5" font-weight="normal" fill="#69665E" text-anchor="middle">0.5</text>
+<line x1="799.5" y1="66.0" x2="799.5" y2="326.0" stroke="#D7D2CC" stroke-width="1"/>
+<text x="799.5" y="344.0" font-family="Geist Mono, SFMono-Regular, Menlo, Consolas, monospace" font-size="13.5" font-weight="normal" fill="#69665E" text-anchor="middle">0.75</text>
+<line x1="956.0" y1="66.0" x2="956.0" y2="326.0" stroke="#D7D2CC" stroke-width="1"/>
+<text x="956.0" y="344.0" font-family="Geist Mono, SFMono-Regular, Menlo, Consolas, monospace" font-size="13.5" font-weight="normal" fill="#69665E" text-anchor="middle">1</text>
+<path d="M330.0,81.0 h583.3 a4,4 0 0 1 4,4 v14 a4,4 0 0 1 -4,4 h-583.3 z" fill="#9A9089"/>
+<text x="316.0" y="98.0" font-family="Instrument Sans, Helvetica Neue, Helvetica, Arial, sans-serif" font-size="16" font-weight="normal" fill="#151613" text-anchor="end">NVIDIA NemotronLabs RE-USE-laughter</text>
+<text x="925.3" y="98.0" font-family="Geist Mono, SFMono-Regular, Menlo, Consolas, monospace" font-size="15" font-weight="600" fill="#151613" text-anchor="start">0.938</text>
+<path d="M330.0,117.0 h582.9 a4,4 0 0 1 4,4 v14 a4,4 0 0 1 -4,4 h-582.9 z" fill="#9A9089"/>
+<text x="316.0" y="134.0" font-family="Instrument Sans, Helvetica Neue, Helvetica, Arial, sans-serif" font-size="16" font-weight="normal" fill="#151613" text-anchor="end">NVIDIA NemotronLabs RE-USE</text>
+<text x="924.9" y="134.0" font-family="Geist Mono, SFMono-Regular, Menlo, Consolas, monospace" font-size="15" font-weight="600" fill="#151613" text-anchor="start">0.937</text>
+<path d="M330.0,153.0 h541.9 a4,4 0 0 1 4,4 v14 a4,4 0 0 1 -4,4 h-541.9 z" fill="#9A9089"/>
+<text x="316.0" y="170.0" font-family="Instrument Sans, Helvetica Neue, Helvetica, Arial, sans-serif" font-size="16" font-weight="normal" fill="#151613" text-anchor="end">UniPASE</text>
+<text x="883.9" y="170.0" font-family="Geist Mono, SFMono-Regular, Menlo, Consolas, monospace" font-size="15" font-weight="600" fill="#151613" text-anchor="start">0.872</text>
+<path d="M330.0,189.0 h366.7 a4,4 0 0 1 4,4 v14 a4,4 0 0 1 -4,4 h-366.7 z" fill="#9A9089"/>
+<text x="316.0" y="206.0" font-family="Instrument Sans, Helvetica Neue, Helvetica, Arial, sans-serif" font-size="16" font-weight="normal" fill="#151613" text-anchor="end">GAP-URGENet</text>
+<text x="708.7" y="206.0" font-family="Geist Mono, SFMono-Regular, Menlo, Consolas, monospace" font-size="15" font-weight="600" fill="#151613" text-anchor="start">0.592</text>
+<path d="M330.0,225.0 h265.5 a4,4 0 0 1 4,4 v14 a4,4 0 0 1 -4,4 h-265.5 z" fill="#9A9089"/>
+<text x="316.0" y="242.0" font-family="Instrument Sans, Helvetica Neue, Helvetica, Arial, sans-serif" font-size="16" font-weight="normal" fill="#151613" text-anchor="end">URGENT 2026 FlowSE baseline</text>
+<text x="607.5" y="242.0" font-family="Geist Mono, SFMono-Regular, Menlo, Consolas, monospace" font-size="15" font-weight="600" fill="#151613" text-anchor="start">0.431</text>
+<path d="M330.0,261.0 h183.0 a4,4 0 0 1 4,4 v14 a4,4 0 0 1 -4,4 h-183.0 z" fill="#9A9089"/>
+<text x="316.0" y="278.0" font-family="Instrument Sans, Helvetica Neue, Helvetica, Arial, sans-serif" font-size="16" font-weight="normal" fill="#151613" text-anchor="end">URGENT 2026 BSRNN baseline</text>
+<text x="525.0" y="278.0" font-family="Geist Mono, SFMono-Regular, Menlo, Consolas, monospace" font-size="15" font-weight="600" fill="#151613" text-anchor="start">0.299</text>
+<path d="M330.0,297.0 h123.8 a4,4 0 0 1 4,4 v14 a4,4 0 0 1 -4,4 h-123.8 z" fill="#9A9089"/>
+<text x="316.0" y="314.0" font-family="Instrument Sans, Helvetica Neue, Helvetica, Arial, sans-serif" font-size="16" font-weight="normal" fill="#151613" text-anchor="end">Smule Renaissance Small</text>
+<text x="465.8" y="314.0" font-family="Geist Mono, SFMono-Regular, Menlo, Consolas, monospace" font-size="15" font-weight="600" fill="#151613" text-anchor="start">0.204</text>
+<text x="1012.0" y="370.0" font-family="Geist Mono, SFMono-Regular, Menlo, Consolas, monospace" font-size="13" font-weight="normal" fill="#69665E" text-anchor="end">Inworld VIBE v0 · set build f5a6420d67b7ef45…</text>
+</svg>

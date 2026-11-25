@@ -1,0 +1,18 @@
+{
+ "renormalizes": false,
+ "display": "Smule Renaissance Small (10.4M)",
+ "mechanism": "generative, complex STFT (single stage)",
+ "native_sr": 48000,
+ "fullband": true,
+ "license_code": "MIT",
+ "license_weights": "MIT",
+ "commercial_ok": true,
+ "repo": "https://github.com/smulelabs/smule-renaissance",
+ "weights": "smulelabs/Smule-Renaissance-Small (Hugging Face): smule-renaissance-small.pt",
+ "notes": "Vocal restoration (arXiv 2510.21659): one complex-STFT model (4096-point window, hop 2048) trained for degraded vocals, singing included, at 48 kHz. The release's processing is reproduced step by step: mono, a 60 Hz high-pass, peak normalisation to full scale, the model in half precision on the GPU, the inverse STFT and the inverse of the normalisation, so the level returns to the input's peak. Whole items are processed at once, as the release does. Its inverse STFT takes no target length, so outputs end with up to 2047 zero samples (43 ms).",
+ "source_dir": "smule-renaissance",
+ "weight_globs": [
+  "smule-renaissance-small.pt"
+ ],
+ "precision": "fp16"
+}

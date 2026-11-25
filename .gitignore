@@ -1,0 +1,23 @@
+__pycache__/
+.ipynb_checkpoints/
+*.pyc
+.venv/
+dist/
+*.egg-info/
+.pytest_cache/
+.gradio/
+.nfs*
+.env
+
+# local only: checkpoints, audio, renders, scratch, downloads
+models/
+data/
+staging/
+internal/
+checkpoints/
+bench/venvs/
+bench/data/
+docs/audio/
+*.safetensors
+!tests/fixtures/*.safetensors
+sample_*_clean*.wav

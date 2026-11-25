@@ -1,0 +1,21 @@
+{
+ "renormalizes": false,
+ "display": "DeepFilterNet3",
+ "mechanism": "masking and deep filtering",
+ "native_sr": 48000,
+ "fullband": true,
+ "license_code": "MIT or Apache-2.0",
+ "license_weights": "MIT or Apache-2.0",
+ "commercial_ok": true,
+ "repo": "https://github.com/Rikorose/DeepFilterNet",
+ "weights": "models/DeepFilterNet3.zip of the release (tag v0.5.6)",
+ "notes": "ERB-band gains plus per-bin complex filters across neighbouring frames, at 48 kHz, two frames of look-ahead; run through the deepfilternet package with the model folder given explicitly.",
+ "source_dir": "deepfilternet",
+ "weight_globs": [
+  "DeepFilterNet3/checkpoints/*"
+ ],
+ "package_dirs": [
+  "df"
+ ],
+ "precision": "fp32"
+}

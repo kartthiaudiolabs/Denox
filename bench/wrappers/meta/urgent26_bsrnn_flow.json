@@ -1,0 +1,18 @@
+{
+ "renormalizes": false,
+ "display": "URGENT26 FlowSE baseline (official, 48k, without final peak normalisation)",
+ "mechanism": "generative (conditional flow matching)",
+ "native_sr": 48000,
+ "fullband": true,
+ "license_code": "Apache-2.0",
+ "license_weights": "see upstream",
+ "commercial_ok": null,
+ "repo": "https://github.com/urgent-challenge/urgent2026_challenge_track1",
+ "weights": "lichenda/icassp_2026_urgent_baseline (Hugging Face): flow_bsrnn.ckpt",
+ "notes": "Conditional flow matching on an improved BSRNN backbone, Euler solver with 15 steps, EMA weights; per-file deterministic prior noise. Sampling-frequency independent; fed 48 kHz here. The official script's peak normalisation to 0.9 (a convention of the challenge's scale-invariant evaluation) is left out: the model's own output keeps the input's scale. Generative: see bench/METRICS.md, \"How to read it\". The prior noise is seeded per file name, so a cut of an item draws different noise from the item.",
+ "source_dir": "urgent26",
+ "weight_globs": [
+  "ckpts/flow_bsrnn.ckpt"
+ ],
+ "precision": "fp32"
+}

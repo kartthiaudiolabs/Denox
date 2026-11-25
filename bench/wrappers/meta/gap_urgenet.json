@@ -1,0 +1,19 @@
+{
+ "renormalizes": true,
+ "display": "GAP-URGENet (URGENT 2026 Track 1, 1st objective)",
+ "mechanism": "generative + predictive fusion",
+ "native_sr": 48000,
+ "fullband": true,
+ "license_code": "MIT",
+ "license_weights": "Apache-2.0",
+ "commercial_ok": true,
+ "repo": "https://github.com/Xiaobin-Rong/gap-urgenet",
+ "weights": "Xiaobin-Rong/gap-urgenet (Hugging Face): DeWavLM-Omni, Adapter, Vocoder, Predictor, PostNet",
+ "notes": "Two 16 kHz branches (a generative one, DeWavLM-Omni features to a neural vocoder; a predictive spectral one) fused by a post-net that generates the band up to 24 kHz; input content above 8 kHz does not reach the output. Run through the release's inference modules (whole files up to 20 s, segmented beyond), checkpoints passed by path. The release scales every output to the input's peak, which adds more gain the noisier the input; its packet-loss concealment, on by default, fills runs of exact digital zeros. Re-synthesises the waveform: the coherent retention metrics may read it as deleted speech (see bench/METRICS.md, \"How to read it\"). Not bit-reproducible: the release's GPU kernels vary from run to run, so two renders of an item differ slightly.",
+ "source_dir": "gap-urgenet",
+ "weight_globs": [
+  "ckpts/*.pt"
+ ],
+ "path_switch_seconds": 20.0,
+ "precision": "fp32"
+}

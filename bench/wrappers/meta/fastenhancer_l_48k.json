@@ -1,0 +1,18 @@
+{
+ "renormalizes": false,
+ "display": "FastEnhancer-L 48k",
+ "mechanism": "masking",
+ "native_sr": 48000,
+ "fullband": true,
+ "license_code": "MIT",
+ "license_weights": "MIT (the repository's licence)",
+ "commercial_ok": true,
+ "repo": "https://github.com/aask1357/fastenhancer",
+ "weights": "fastenhancer_l.onnx of the GitHub release onnx-48khz-v1",
+ "notes": "The release's own ONNX export driven frame by frame (200-sample hops) with its recurrent state carried between frames, as the release's test script runs it; onnxruntime on the CPU.",
+ "source_dir": "fastenhancer_onnx",
+ "weight_globs": [
+  "fastenhancer_l.onnx"
+ ],
+ "precision": "fp32"
+}

@@ -1,0 +1,19 @@
+{
+ "renormalizes": false,
+ "display": "NVIDIA NemotronLabs RE-USE-laughter (9.6M, 2026-10)",
+ "mechanism": "spectral mapping",
+ "native_sr": 48000,
+ "fullband": true,
+ "license_code": "OpenMDW-1.1",
+ "license_weights": "OpenMDW-1.1",
+ "commercial_ok": true,
+ "repo": "https://huggingface.co/nvidia/NVIDIA-NemotronLabs-RE-USE-laughter",
+ "weights": "nvidia/NVIDIA-NemotronLabs-RE-USE-laughter (Hugging Face): model.safetensors",
+ "params_m": 9.6,
+ "notes": "The 2026-10 NemotronLabs release of RE-USE (new weights, same 9.6M USEMamba, OpenMDW-1.1): the release's inference.py, its magnitude decompression and blanked frames included, on whole files. The variant trained to keep laughter.",
+ "source_dir": "reuse_nemotron_laughter",
+ "weight_globs": [
+  "model.safetensors"
+ ],
+ "precision": "fp32"
+}

@@ -1,0 +1,22 @@
+{
+ "renormalizes": false,
+ "display": "resemble-enhance (denoise)",
+ "mechanism": "masking (the denoiser stage)",
+ "native_sr": 44100,
+ "fullband": true,
+ "license_code": "MIT",
+ "license_weights": "see upstream",
+ "commercial_ok": null,
+ "repo": "https://github.com/resemble-ai/resemble-enhance",
+ "weights": "ResembleAI/resemble-enhance (Hugging Face): enhancer_stage2",
+ "notes": "The denoiser stage alone, without the enhancer (the release's --denoise_only), at 44.1 kHz; inputs over 30 s are processed in 30 s chunks overlapping by 1 s. The weights folder is given explicitly; without one the package pulls the repository's main branch on every start.",
+ "source_dir": "resemble-enhance",
+ "weight_globs": [
+  "enhancer_stage2/ds/G/default/mp_rank_00_model_states.pt"
+ ],
+ "package_dirs": [
+  "resemble_enhance"
+ ],
+ "path_switch_seconds": 30.0,
+ "precision": "fp32"
+}
