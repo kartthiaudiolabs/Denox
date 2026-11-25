@@ -135,6 +135,185 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  // --- DSP MASTERING SUITE & THRESHOLD STATE ---
+  const dspState = {
+    threshold: 1.0,
+    declicker: {
+      enabled: true,
+      preset: 'mouth_clicks',
+      sensitivity: 0.75,
+      click_width_samples: 18,
+      decrackle_amount: 0.40,
+      mode: 'mouth_clicks'
+    },
+    deverb: {
+      enabled: true,
+      preset: 'tight_booth',
+      reduction_amount: 0.85,
+      room_size: 'small',
+      preserve_early_reflections: 0.40,
+      spectral_floor_db: -22.0
+    },
+    deesser: {
+      enabled: true,
+      preset: 'smooth_broadcast',
+      threshold_db: -22.0,
+      reduction_amount: 0.65,
+      frequency_focus_hz: 6500.0,
+      bandwidth_q: 1.4,
+      mode: 'split_band'
+    }
+  };
+
+  let dspPresetsCache = null;
+  async function loadDspPresets() {
+    try {
+      const res = await fetch('/api/dsp/presets');
+      dspPresetsCache = await res.json();
+    } catch (e) {
+      console.warn("Failed to fetch DSP presets:", e);
+    }
+  }
+  loadDspPresets();
+
+  // Threshold Slider
+  const thresholdSlider = document.getElementById('slider-isolation-threshold');
+  const thresholdDisplay = document.getElementById('threshold-val-display');
+  if (thresholdSlider) {
+    thresholdSlider.addEventListener('input', (e) => {
+      const val = parseInt(e.target.value, 10);
+      dspState.threshold = val / 100.0;
+      let desc = "PURE ISOLATED VOCAL";
+      if (val === 0) desc = "RAW AUDIO (0% CLEAN)";
+      else if (val <= 25) desc = "SUBTLE NOISE ATTENUATION";
+      else if (val <= 60) desc = "NATURAL SPEECH & ROOM AIR";
+      else if (val < 100) desc = "WARM BALANCED SPEECH";
+      if (thresholdDisplay) thresholdDisplay.innerText = `${val}% (${desc})`;
+    });
+  }
+
+  // Module Toggles
+  function setupModuleToggle(btnId, cardId, moduleKey) {
+    const btn = document.getElementById(btnId);
+    const card = document.getElementById(cardId);
+    if (!btn || !card) return;
+    btn.onclick = () => {
+      const active = !dspState[moduleKey].enabled;
+      dspState[moduleKey].enabled = active;
+      btn.classList.toggle('active', active);
+      btn.innerText = active ? "ACTIVE" : "BYPASSED";
+      card.classList.toggle('module-active', active);
+      card.classList.toggle('module-bypassed', !active);
+    };
+  }
+  setupModuleToggle('btn-toggle-declicker', 'card-module-declicker', 'declicker');
+  setupModuleToggle('btn-toggle-deverb', 'card-module-deverb', 'deverb');
+  setupModuleToggle('btn-toggle-deesser', 'card-module-deesser', 'deesser');
+
+  // Sliders Wiring
+  function wireSlider(sliderId, dispId, callback, formatFn) {
+    const slider = document.getElementById(sliderId);
+    const disp = document.getElementById(dispId);
+    if (!slider) return;
+    slider.addEventListener('input', (e) => {
+      const val = parseFloat(e.target.value);
+      callback(val);
+      if (disp) disp.innerText = formatFn ? formatFn(val) : `${val}%`;
+    });
+  }
+
+  wireSlider('slider-dc-sens', 'disp-dc-sens', v => dspState.declicker.sensitivity = v / 100.0);
+  wireSlider('slider-dc-crackle', 'disp-dc-crackle', v => dspState.declicker.decrackle_amount = v / 100.0);
+  wireSlider('slider-dv-reduc', 'disp-dv-reduc', v => dspState.deverb.reduction_amount = v / 100.0);
+  wireSlider('slider-dv-early', 'disp-dv-early', v => dspState.deverb.preserve_early_reflections = v / 100.0);
+  wireSlider('slider-de-reduc', 'disp-de-reduc', v => dspState.deesser.reduction_amount = v / 100.0);
+  wireSlider('slider-de-freq', 'disp-de-freq', v => dspState.deesser.frequency_focus_hz = v, v => `${(v/1000).toFixed(1)} kHz`);
+
+  // Presets Handlers
+  const globalPresetSelect = document.getElementById('select-global-preset');
+  if (globalPresetSelect) {
+    globalPresetSelect.onchange = (e) => {
+      const key = e.target.value;
+      if (!dspPresetsCache || !dspPresetsCache.global_presets[key]) return;
+      const p = dspPresetsCache.global_presets[key];
+
+      // Update Threshold
+      const threshVal = Math.round(p.isolation_threshold * 100);
+      if (thresholdSlider) {
+        thresholdSlider.value = threshVal;
+        thresholdSlider.dispatchEvent(new Event('input'));
+      }
+
+      // Update Sub-modules
+      if (p.declicker) applyModulePreset('declicker', p.declicker.preset, p.declicker.enabled);
+      if (p.deverb) applyModulePreset('deverb', p.deverb.preset, p.deverb.enabled);
+      if (p.deesser) applyModulePreset('deesser', p.deesser.preset, p.deesser.enabled);
+    };
+  }
+
+  function applyModulePreset(modKey, presetKey, enabled = true) {
+    if (!dspPresetsCache) return;
+    const presetsMap = dspPresetsCache[`${modKey}_presets`];
+    if (!presetsMap || !presetsMap[presetKey]) return;
+    const p = presetsMap[presetKey];
+
+    const toggleBtn = document.getElementById(`btn-toggle-${modKey}`);
+    const card = document.getElementById(`card-module-${modKey}`);
+    const presetSelect = document.getElementById(`preset-${modKey}`);
+
+    dspState[modKey].enabled = enabled;
+    if (toggleBtn) {
+      toggleBtn.classList.toggle('active', enabled);
+      toggleBtn.innerText = enabled ? "ACTIVE" : "BYPASSED";
+    }
+    if (card) {
+      card.classList.toggle('module-active', enabled);
+      card.classList.toggle('module-bypassed', !enabled);
+    }
+    if (presetSelect) presetSelect.value = presetKey;
+
+    if (modKey === 'declicker') {
+      dspState.declicker.sensitivity = p.sensitivity;
+      dspState.declicker.decrackle_amount = p.decrackle_amount;
+      dspState.declicker.click_width_samples = p.click_width_samples;
+      dspState.declicker.mode = p.mode;
+      const s1 = document.getElementById('slider-dc-sens');
+      const s2 = document.getElementById('slider-dc-crackle');
+      if (s1) s1.value = Math.round(p.sensitivity * 100);
+      if (s2) s2.value = Math.round(p.decrackle_amount * 100);
+      document.getElementById('disp-dc-sens').innerText = `${Math.round(p.sensitivity * 100)}%`;
+      document.getElementById('disp-dc-crackle').innerText = `${Math.round(p.decrackle_amount * 100)}%`;
+    } else if (modKey === 'deverb') {
+      dspState.deverb.reduction_amount = p.reduction_amount;
+      dspState.deverb.room_size = p.room_size;
+      dspState.deverb.preserve_early_reflections = p.preserve_early_reflections;
+      const s1 = document.getElementById('slider-dv-reduc');
+      const s2 = document.getElementById('slider-dv-early');
+      if (s1) s1.value = Math.round(p.reduction_amount * 100);
+      if (s2) s2.value = Math.round(p.preserve_early_reflections * 100);
+      document.getElementById('disp-dv-reduc').innerText = `${Math.round(p.reduction_amount * 100)}%`;
+      document.getElementById('disp-dv-early').innerText = `${Math.round(p.preserve_early_reflections * 100)}%`;
+    } else if (modKey === 'deesser') {
+      dspState.deesser.reduction_amount = p.reduction_amount;
+      dspState.deesser.frequency_focus_hz = p.frequency_focus_hz;
+      dspState.deesser.threshold_db = p.threshold_db;
+      const s1 = document.getElementById('slider-de-reduc');
+      const s2 = document.getElementById('slider-de-freq');
+      if (s1) s1.value = Math.round(p.reduction_amount * 100);
+      if (s2) s2.value = p.frequency_focus_hz;
+      document.getElementById('disp-de-reduc').innerText = `${Math.round(p.reduction_amount * 100)}%`;
+      document.getElementById('disp-de-freq').innerText = `${(p.frequency_focus_hz/1000).toFixed(1)} kHz`;
+    }
+  }
+
+  // Individual Module Preset dropdown changes
+  ['declicker', 'deverb', 'deesser'].forEach(modKey => {
+    const sel = document.getElementById(`preset-${modKey}`);
+    if (sel) {
+      sel.onchange = (e) => applyModulePreset(modKey, e.target.value, dspState[modKey].enabled);
+    }
+  });
+
   // --- ISOLATION EXECUTION ---
   const runBtn = document.getElementById('btn-run-isolation');
   const progressHud = document.getElementById('progress-hud');
@@ -146,7 +325,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!selectedFilePath) return;
 
       runBtn.disabled = true;
-      runBtn.innerHTML = `NEURAL INFERENCE ACTIVE...`;
+      runBtn.innerHTML = `NEURAL INFERENCE & DSP MASTERING ACTIVE...`;
       if (progressHud) progressHud.style.display = 'block';
       if (progressBar) progressBar.style.width = '30%';
 
@@ -165,7 +344,9 @@ document.addEventListener('DOMContentLoaded', () => {
             file_path: selectedFilePath,
             model: modelSelect,
             passes: passesSelect,
-            precision: precisionSelect
+            precision: precisionSelect,
+            threshold: dspState.threshold,
+            dsp: dspState
           })
         });
 
@@ -179,7 +360,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (progressBar) progressBar.style.width = '100%';
         if (telemetryStats) {
-          telemetryStats.innerText = `${data.duration}s audio in ${data.elapsed}s · ${data.rtf}x Real-Time Factor (MPS Accelerated)`;
+          telemetryStats.innerText = `${data.duration}s audio in ${data.elapsed}s · ${data.rtf}x RTF (Threshold: ${Math.round(dspState.threshold*100)}%, Clicks Repaired: ${data.dsp_stats?.clicks_repaired || 0})`;
         }
 
         // Render Stems into Deck
@@ -195,7 +376,7 @@ document.addEventListener('DOMContentLoaded', () => {
         alert("Isolation Error: " + err.message);
       } finally {
         runBtn.disabled = false;
-        runBtn.innerHTML = `INITIATE NEURAL ISOLATION`;
+        runBtn.innerHTML = `INITIATE NEURAL ISOLATION & DSP CHAIN`;
         setTimeout(() => {
           if (progressHud) progressHud.style.display = 'none';
           if (progressBar) progressBar.style.width = '0%';
@@ -203,6 +384,66 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
   }
+
+  // Instant DSP Re-Mastering Button
+  const btnReapply = document.getElementById('btn-reapply-dsp');
+  if (btnReapply) {
+    btnReapply.onclick = async () => {
+      if (!currentStemData || !currentStemData.stem_id) {
+        alert("Please run isolation on an audio file first.");
+        return;
+      }
+
+      btnReapply.disabled = true;
+      btnReapply.innerText = "⚡ COMPUTING DSP CHAIN...";
+
+      try {
+        const res = await fetch('/api/remaster', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            stem_id: currentStemData.stem_id,
+            dsp: dspState
+          })
+        });
+
+        if (!res.ok) throw new Error("Remastering failed");
+        const data = await res.json();
+
+        // Update audio deck seamlessly
+        const curTime = deck.tracks.vocal.audio.currentTime;
+        const wasPlaying = deck.isPlaying;
+
+        deck.tracks.vocal.audio.src = data.urls.vocal;
+        deck.tracks.background.audio.src = data.urls.background;
+        deck.tracks.vocal.audio.currentTime = curTime;
+        deck.tracks.background.audio.currentTime = curTime;
+
+        if (wasPlaying) deck.play();
+
+        // Re-draw waveforms
+        const cvVocal = document.getElementById('canvas-vocal');
+        const cvBg = document.getElementById('canvas-bg');
+        const progress = deck.duration > 0 ? curTime / deck.duration : 0;
+        WaveformRenderer.drawWaveform(cvVocal, data.waveforms.vocal, '#00f0ff', progress);
+        WaveformRenderer.drawWaveform(cvBg, data.waveforms.background, '#9d00ff', progress);
+
+        currentStemData.waveforms.vocal = data.waveforms.vocal;
+        currentStemData.waveforms.background = data.waveforms.background;
+
+        btnReapply.innerText = `✓ RE-MASTERED (Repaired ${data.dsp_stats.clicks_repaired} clicks)`;
+        setTimeout(() => {
+          btnReapply.innerText = "⚡ RE-APPLY THRESHOLD & DSP CHAIN (< 0.2s)";
+          btnReapply.disabled = false;
+        }, 1800);
+      } catch (err) {
+        alert("DSP Re-master Error: " + err.message);
+        btnReapply.disabled = false;
+        btnReapply.innerText = "⚡ RE-APPLY THRESHOLD & DSP CHAIN (< 0.2s)";
+      }
+    };
+  }
+
 
   function renderStems(data) {
     const stemsContainer = document.getElementById('stems-container');

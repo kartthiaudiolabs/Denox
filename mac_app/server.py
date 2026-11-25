@@ -18,6 +18,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from mac_app import engine
+from mac_app import dsp as dsp_module
 
 logger = logging.getLogger("mac_app.server")
 
@@ -42,6 +43,13 @@ class IsolateRequest(BaseModel):
     model: str = "offline"
     passes: int = 1
     precision: str = "auto"
+    threshold: float = 1.0
+    dsp: Optional[Dict[str, Any]] = None
+
+
+class RemasterRequest(BaseModel):
+    stem_id: str
+    dsp: Dict[str, Any]
 
 
 class SampleRequest(BaseModel):
@@ -112,19 +120,46 @@ async def upload_audio(file: UploadFile = File(...)):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.get("/api/dsp/presets")
+async def get_dsp_presets():
+    """Returns presets for Global Mastering, De-Clicker, De-Verb, and De-Esser."""
+    return {
+        "global_presets": dsp_module.GLOBAL_CHAIN_PRESETS,
+        "declicker_presets": dsp_module.DECLICKER_PRESETS,
+        "deverb_presets": dsp_module.DEVERB_PRESETS,
+        "deesser_presets": dsp_module.DEESSER_PRESETS,
+    }
+
+
 @app.post("/api/isolate")
 async def run_isolation(req: IsolateRequest):
-    """Executes voice isolation on a file and returns stems and waveforms."""
+    """Executes voice isolation on a file and applies the DSP chain."""
     try:
+        dsp_dict = req.dsp or {}
+        if "threshold" not in dsp_dict:
+            dsp_dict["threshold"] = req.threshold
+
         result = engine.isolate_file(
             file_path=req.file_path,
             model_choice=req.model,
             offline_passes=req.passes,
-            precision=req.precision
+            precision=req.precision,
+            dsp_params=dsp_dict
         )
         return result
     except Exception as e:
         logger.exception("Isolation failed")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/remaster")
+async def remaster_audio(req: RemasterRequest):
+    """Re-applies DSP chain to cached isolation with sub-second turnaround."""
+    try:
+        result = engine.remaster_stem(req.stem_id, req.dsp)
+        return result
+    except Exception as e:
+        logger.exception("Remaster failed")
         raise HTTPException(status_code=500, detail=str(e))
 
 

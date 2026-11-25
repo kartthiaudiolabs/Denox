@@ -23,6 +23,7 @@ import torch
 from inworld import voice_isolation as vi
 from inworld.voice_isolation import audio as audio_lib
 from inworld.voice_isolation import registry
+from mac_app import dsp as dsp_module
 
 # Try importing live session from demo
 try:
@@ -146,13 +147,69 @@ def get_system_telemetry() -> Dict[str, Any]:
     }
 
 
+def build_dsp_config(dsp_params: Optional[Dict[str, Any]] = None) -> dsp_module.DenoxMasteringChainConfig:
+    """Builds a DenoxMasteringChainConfig from user parameters."""
+    cfg = dsp_module.DenoxMasteringChainConfig()
+    if not dsp_params:
+        return cfg
+
+    if "isolation_threshold" in dsp_params:
+        cfg.isolation_threshold = float(dsp_params["isolation_threshold"])
+    elif "threshold" in dsp_params:
+        cfg.isolation_threshold = float(dsp_params["threshold"])
+
+    # De-Clicker
+    dc = dsp_params.get("declicker")
+    if dc and isinstance(dc, dict):
+        cfg.declicker.enabled = bool(dc.get("enabled", True))
+        if "sensitivity" in dc:
+            cfg.declicker.sensitivity = float(dc["sensitivity"])
+        if "click_width_samples" in dc:
+            cfg.declicker.click_width_samples = int(dc["click_width_samples"])
+        if "decrackle_amount" in dc:
+            cfg.declicker.decrackle_amount = float(dc["decrackle_amount"])
+        if "mode" in dc:
+            cfg.declicker.mode = str(dc["mode"])
+
+    # De-Verb
+    dv = dsp_params.get("deverb")
+    if dv and isinstance(dv, dict):
+        cfg.deverb.enabled = bool(dv.get("enabled", True))
+        if "reduction_amount" in dv:
+            cfg.deverb.reduction_amount = float(dv["reduction_amount"])
+        if "room_size" in dv:
+            cfg.deverb.room_size = str(dv["room_size"])
+        if "preserve_early_reflections" in dv:
+            cfg.deverb.preserve_early_reflections = float(dv["preserve_early_reflections"])
+        if "spectral_floor_db" in dv:
+            cfg.deverb.spectral_floor_db = float(dv["spectral_floor_db"])
+
+    # De-Esser
+    de = dsp_params.get("deesser")
+    if de and isinstance(de, dict):
+        cfg.deesser.enabled = bool(de.get("enabled", True))
+        if "threshold_db" in de:
+            cfg.deesser.threshold_db = float(de["threshold_db"])
+        if "reduction_amount" in de:
+            cfg.deesser.reduction_amount = float(de["reduction_amount"])
+        if "frequency_focus_hz" in de:
+            cfg.deesser.frequency_focus_hz = float(de["frequency_focus_hz"])
+        if "bandwidth_q" in de:
+            cfg.deesser.bandwidth_q = float(de["bandwidth_q"])
+        if "mode" in de:
+            cfg.deesser.mode = str(de["mode"])
+
+    return cfg
+
+
 def isolate_file(
     file_path: str,
     model_choice: str = "offline",
     offline_passes: int = 1,
-    precision: str = "auto"
+    precision: str = "auto",
+    dsp_params: Optional[Dict[str, Any]] = None
 ) -> Dict[str, Any]:
-    """Performs neural voice isolation on a given audio file and extracts background."""
+    """Performs neural voice isolation followed by the DENOX DSP mastering suite."""
     models = get_engine_models()
     path = pathlib.Path(file_path).expanduser().resolve()
     if not path.exists():
@@ -169,30 +226,32 @@ def isolate_file(
         mono_resampled = mono
 
     duration_sec = len(mono_resampled) / SAMPLE_RATE
-
     start_time = time.perf_counter()
 
     if model_choice == "realtime":
         with models.realtime_lock:
-            voice = models.realtime.isolate(mono_resampled, SAMPLE_RATE, output_sample_rate=SAMPLE_RATE)
+            raw_voice = models.realtime.isolate(mono_resampled, SAMPLE_RATE, output_sample_rate=SAMPLE_RATE)
     else:
         with models.offline_lock:
-            # Set passes if requested
             old_passes = models.offline.offline_passes
             try:
                 models.offline.offline_passes = max(1, int(offline_passes))
-                voice = models.offline.isolate(mono_resampled, SAMPLE_RATE, output_sample_rate=SAMPLE_RATE)
+                raw_voice = models.offline.isolate(mono_resampled, SAMPLE_RATE, output_sample_rate=SAMPLE_RATE)
             finally:
                 models.offline.offline_passes = old_passes
 
-    if isinstance(voice, torch.Tensor):
-        voice = voice.cpu().numpy()
+    if isinstance(raw_voice, torch.Tensor):
+        raw_voice = raw_voice.cpu().numpy()
 
     elapsed = time.perf_counter() - start_time
     rtf = duration_sec / max(elapsed, 1e-6)
 
-    # Background residual = aligned input - voice
-    background = mono_resampled - voice
+    # Build and execute DSP Mastering Chain
+    dsp_cfg = build_dsp_config(dsp_params)
+    processor = dsp_module.DenoxMasteringProcessor(SAMPLE_RATE)
+    mastered_voice, background, dsp_stats = processor.process_chain(
+        mono_resampled, raw_voice, dsp_cfg
+    )
 
     # Save stems to temporary studio cache
     stem_id = f"stem_{int(time.time() * 1000)}"
@@ -200,16 +259,18 @@ def isolate_file(
     stem_dir.mkdir(parents=True, exist_ok=True)
 
     orig_path = stem_dir / "original.wav"
+    raw_vocal_path = stem_dir / "raw_neural_voice.wav"
     vocal_path = stem_dir / "vocal.wav"
     bg_path = stem_dir / "background.wav"
 
     sf.write(str(orig_path), pcm16(mono_resampled), SAMPLE_RATE, subtype="PCM_16")
-    sf.write(str(vocal_path), pcm16(voice), SAMPLE_RATE, subtype="PCM_16")
+    sf.write(str(raw_vocal_path), pcm16(raw_voice), SAMPLE_RATE, subtype="PCM_16")
+    sf.write(str(vocal_path), pcm16(mastered_voice), SAMPLE_RATE, subtype="PCM_16")
     sf.write(str(bg_path), pcm16(background), SAMPLE_RATE, subtype="PCM_16")
 
     # Generate waveform preview data
     peaks_orig = compute_waveform_peaks(mono_resampled, 400)
-    peaks_vocal = compute_waveform_peaks(voice, 400)
+    peaks_vocal = compute_waveform_peaks(mastered_voice, 400)
     peaks_bg = compute_waveform_peaks(background, 400)
 
     return {
@@ -221,6 +282,7 @@ def isolate_file(
         "sample_rate": SAMPLE_RATE,
         "model_used": model_choice,
         "passes": offline_passes,
+        "dsp_stats": dsp_stats,
         "urls": {
             "original": f"/api/audio/{stem_id}/original.wav",
             "vocal": f"/api/audio/{stem_id}/vocal.wav",
@@ -233,6 +295,45 @@ def isolate_file(
         },
         "waveforms": {
             "original": peaks_orig,
+            "vocal": peaks_vocal,
+            "background": peaks_bg,
+        }
+    }
+
+
+def remaster_stem(stem_id: str, dsp_params: Dict[str, Any]) -> Dict[str, Any]:
+    """Re-applies DSP chain to cached neural isolation output with sub-second latency."""
+    stem_dir = TMP_DIR / stem_id
+    orig_path = stem_dir / "original.wav"
+    raw_vocal_path = stem_dir / "raw_neural_voice.wav"
+    vocal_path = stem_dir / "vocal.wav"
+    bg_path = stem_dir / "background.wav"
+
+    if not orig_path.exists() or not raw_vocal_path.exists():
+        raise FileNotFoundError(f"Stem session {stem_id} not found in cache")
+
+    orig, _ = sf.read(str(orig_path), dtype="float32")
+    raw_vocal, _ = sf.read(str(raw_vocal_path), dtype="float32")
+
+    dsp_cfg = build_dsp_config(dsp_params)
+    processor = dsp_module.DenoxMasteringProcessor(SAMPLE_RATE)
+    mastered_voice, background, dsp_stats = processor.process_chain(orig, raw_vocal, dsp_cfg)
+
+    sf.write(str(vocal_path), pcm16(mastered_voice), SAMPLE_RATE, subtype="PCM_16")
+    sf.write(str(bg_path), pcm16(background), SAMPLE_RATE, subtype="PCM_16")
+
+    peaks_vocal = compute_waveform_peaks(mastered_voice, 400)
+    peaks_bg = compute_waveform_peaks(background, 400)
+
+    return {
+        "stem_id": stem_id,
+        "dsp_stats": dsp_stats,
+        "urls": {
+            "original": f"/api/audio/{stem_id}/original.wav?t={time.time()}",
+            "vocal": f"/api/audio/{stem_id}/vocal.wav?t={time.time()}",
+            "background": f"/api/audio/{stem_id}/background.wav?t={time.time()}",
+        },
+        "waveforms": {
             "vocal": peaks_vocal,
             "background": peaks_bg,
         }

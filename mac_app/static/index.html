@@ -124,8 +124,159 @@
           </div>
         </div>
 
+        <!-- VOICE ISOLATION THRESHOLD (0 - 100%) -->
+        <div style="background:rgba(0, 240, 255, 0.04); border:1px solid rgba(0, 240, 255, 0.2); border-radius:var(--radius-md); padding:14px; margin-bottom:18px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+            <label class="control-label" style="color:var(--cyan-neon); font-size:12px; font-weight:700;">
+              VOICE ISOLATION THRESHOLD (NOISE CLEANING INTENSITY)
+            </label>
+            <span id="threshold-val-display" style="font-family:var(--font-hud); font-size:13px; font-weight:700; color:var(--cyan-neon);">
+              100% (PURE ISOLATED VOCAL)
+            </span>
+          </div>
+          <input type="range" id="slider-isolation-threshold" min="0" max="100" value="100" step="1" class="cyber-range">
+          <div style="display:flex; justify-content:space-between; font-family:var(--font-hud); font-size:9px; color:var(--text-muted); margin-top:4px;">
+            <span>0% (RAW AUDIO)</span>
+            <span>25% (SUBTLE REDUCTION)</span>
+            <span>50% (NATURAL AMBIENCE)</span>
+            <span>75% (WARM SPEECH)</span>
+            <span>100% (ZERO BACKGROUND NOISE)</span>
+          </div>
+        </div>
+
+        <!-- DENOX NEURAL DSP MASTERING SUITE -->
+        <div class="dsp-suite-container">
+          <div class="dsp-suite-header">
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span class="hud-dot" style="background:var(--violet-neon); box-shadow:0 0 8px var(--violet-neon);"></span>
+              <span class="panel-title" style="color:var(--violet-neon); font-size:12px;">DENOX DSP MASTERING SUITE</span>
+            </div>
+            <div style="display:flex; align-items:center; gap:10px;">
+              <span style="font-family:var(--font-hud); font-size:10px; color:var(--text-dim);">GLOBAL PRESET:</span>
+              <select class="cyber-select" id="select-global-preset" style="padding:4px 8px; font-size:11px;">
+                <option value="custom">Custom Configuration</option>
+                <option value="ultra_clean_podcast">Ultra-Clean Podcast (Max Clarity)</option>
+                <option value="studio_vocal_booth">Studio Vocal Booth Master</option>
+                <option value="natural_warmth">Natural Warmth (Retain Room Air)</option>
+                <option value="heavy_room_killer">Echo & Cavern Eliminator</option>
+                <option value="vintage_restoration">Vintage Vinyl & Crackle Restoration</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="dsp-modules-grid">
+            <!-- MODULE 1: DE-CLICKER & DE-CRACKLER -->
+            <div class="dsp-module-card module-active" id="card-module-declicker">
+              <div class="dsp-module-titlebar">
+                <span style="font-family:var(--font-hud); font-size:11px; font-weight:700; color:var(--cyan-neon);">
+                  [MOD-01] DE-CLICKER & CRACKLE
+                </span>
+                <button class="dsp-toggle-btn active" id="btn-toggle-declicker">ACTIVE</button>
+              </div>
+
+              <div class="slider-group">
+                <label class="control-label" style="font-size:10px;">PRESET</label>
+                <select class="cyber-select" id="preset-declicker" style="padding:4px 8px; font-size:11px; margin-bottom:8px;">
+                  <option value="mouth_clicks" selected>Mouth & Saliva Clicks</option>
+                  <option value="digital_artifacts">Digital Dropouts & Buffer Clicks</option>
+                  <option value="vinyl_crackle">Vinyl & Dense Crackle</option>
+                  <option value="subtle_transparent">Subtle Transparent Polish</option>
+                </select>
+              </div>
+
+              <div class="slider-group">
+                <div class="slider-header">
+                  <span>SENSITIVITY</span>
+                  <span id="disp-dc-sens">75%</span>
+                </div>
+                <input type="range" id="slider-dc-sens" min="0" max="100" value="75" class="cyber-range">
+              </div>
+
+              <div class="slider-group">
+                <div class="slider-header">
+                  <span>DE-CRACKLE INTENSITY</span>
+                  <span id="disp-dc-crackle">40%</span>
+                </div>
+                <input type="range" id="slider-dc-crackle" min="0" max="100" value="40" class="cyber-range">
+              </div>
+            </div>
+
+            <!-- MODULE 2: DE-VERB (DEREVERBERATION) -->
+            <div class="dsp-module-card module-active" id="card-module-deverb">
+              <div class="dsp-module-titlebar">
+                <span style="font-family:var(--font-hud); font-size:11px; font-weight:700; color:var(--violet-neon);">
+                  [MOD-02] DE-VERB (ACOUSTICS)
+                </span>
+                <button class="dsp-toggle-btn active" id="btn-toggle-deverb">ACTIVE</button>
+              </div>
+
+              <div class="slider-group">
+                <label class="control-label" style="font-size:10px;">ROOM PRESET</label>
+                <select class="cyber-select" id="preset-deverb" style="padding:4px 8px; font-size:11px; margin-bottom:8px;">
+                  <option value="tight_booth" selected>Treated Vocal Booth</option>
+                  <option value="bedroom_studio">Dry Bedroom Studio</option>
+                  <option value="hall_echo_kill">Cavern & Echo Suppressor</option>
+                  <option value="subtle_clarity">Subtle Room Tame</option>
+                </select>
+              </div>
+
+              <div class="slider-group">
+                <div class="slider-header">
+                  <span>REVERB REDUCTION</span>
+                  <span id="disp-dv-reduc">85%</span>
+                </div>
+                <input type="range" id="slider-dv-reduc" min="0" max="100" value="85" class="cyber-range">
+              </div>
+
+              <div class="slider-group">
+                <div class="slider-header">
+                  <span>PRESERVE DIRECT SOUND</span>
+                  <span id="disp-dv-early">40%</span>
+                </div>
+                <input type="range" id="slider-dv-early" min="0" max="100" value="40" class="cyber-range">
+              </div>
+            </div>
+
+            <!-- MODULE 3: DE-ESSER (SIBILANCE) -->
+            <div class="dsp-module-card module-active" id="card-module-deesser">
+              <div class="dsp-module-titlebar">
+                <span style="font-family:var(--font-hud); font-size:11px; font-weight:700; color:var(--emerald-neon);">
+                  [MOD-03] DE-ESSER (HARSH 'S')
+                </span>
+                <button class="dsp-toggle-btn active" id="btn-toggle-deesser">ACTIVE</button>
+              </div>
+
+              <div class="slider-group">
+                <label class="control-label" style="font-size:10px;">VOCAL PROFILE</label>
+                <select class="cyber-select" id="preset-deesser" style="padding:4px 8px; font-size:11px; margin-bottom:8px;">
+                  <option value="smooth_broadcast" selected>Broadcast Warmth</option>
+                  <option value="harsh_s_tamer">Harsh 'S' Piercing Tamer</option>
+                  <option value="male_dialogue">Male Dialogue (Lower S)</option>
+                  <option value="female_vocal_airy">Female Vocal (High S / T)</option>
+                </select>
+              </div>
+
+              <div class="slider-group">
+                <div class="slider-header">
+                  <span>SIBILANCE REDUCTION</span>
+                  <span id="disp-de-reduc">65%</span>
+                </div>
+                <input type="range" id="slider-de-reduc" min="0" max="100" value="65" class="cyber-range">
+              </div>
+
+              <div class="slider-group">
+                <div class="slider-header">
+                  <span>FREQUENCY FOCUS</span>
+                  <span id="disp-de-freq">6.5 kHz</span>
+                </div>
+                <input type="range" id="slider-de-freq" min="4000" max="9500" value="6500" step="100" class="cyber-range">
+              </div>
+            </div>
+          </div>
+        </div>
+
         <button class="btn-cyber-primary" id="btn-run-isolation" disabled>
-          INITIATE NEURAL ISOLATION
+          INITIATE NEURAL ISOLATION & DSP CHAIN
         </button>
 
         <!-- PROGRESS HUD -->
@@ -190,7 +341,10 @@
             </div>
           </div>
 
-          <div style="display:flex; justify-content:flex-end; gap:12px; margin-top:8px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; margin-top:12px;">
+            <button class="btn-cyber-primary" id="btn-reapply-dsp" style="width:auto; padding:10px 20px; font-size:12px; background:linear-gradient(135deg, rgba(157, 0, 255, 0.8), rgba(0, 240, 255, 0.8));">
+              ⚡ RE-APPLY THRESHOLD & DSP CHAIN (< 0.2s)
+            </button>
             <button class="btn-icon" id="btn-reveal-stems">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
               REVEAL IN MACOS FINDER

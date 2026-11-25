@@ -21,3 +21,4 @@ docs/audio/
 *.safetensors
 !tests/fixtures/*.safetensors
 sample_*_clean*.wav
+.DS_Store
