@@ -407,21 +407,27 @@ def generate_module_preview(
     # Check hash for caching
     param_str = json.dumps(params, sort_keys=True)
     cache_key = hashlib.md5(f"{path.name}_{module_name}_{source_mode}_{param_str}_{stem_id or ''}".encode()).hexdigest()[:16]
+    vocal_cache_key = hashlib.md5(f"{path.name}_raw_vocal_{stem_id or ''}".encode()).hexdigest()[:16]
 
     out_filename = f"prev_{module_name}_{cache_key}.wav"
     orig_filename = f"prev_orig_{cache_key}.wav"
+    vocal_filename = f"prev_vocal_{vocal_cache_key}.wav"
     out_path = PREVIEWS_DIR / out_filename
     orig_path = PREVIEWS_DIR / orig_filename
+    vocal_path = PREVIEWS_DIR / vocal_filename
 
     # Save orig preview if not exists
     if not orig_path.exists():
         sf.write(str(orig_path), pcm16(audio), SAMPLE_RATE, subtype="PCM_16")
+
+    vocal_url = f"/api/preview/audio/{vocal_filename}?t={time.time()}" if vocal_path.exists() else None
 
     if out_path.exists():
         return {
             "status": "success",
             "preview_url": f"/api/preview/audio/{out_filename}?t={time.time()}",
             "original_url": f"/api/preview/audio/{orig_filename}?t={time.time()}",
+            "vocal_url": vocal_url,
             "duration": duration_sec,
             "module": module_name
         }
@@ -432,11 +438,19 @@ def generate_module_preview(
     if module_name == "denoiser":
         denoiser = dsp_module.DeNoiser(SAMPLE_RATE)
         if raw_vocal is None:
-            models = get_engine_models()
-            with models.offline_lock:
-                raw_vocal = models.offline.isolate(audio, SAMPLE_RATE)
-                if isinstance(raw_vocal, torch.Tensor):
-                    raw_vocal = raw_vocal.cpu().numpy()
+            if vocal_path.exists():
+                raw_vocal, _ = sf.read(str(vocal_path), dtype="float32")
+            else:
+                models = get_engine_models()
+                with models.offline_lock:
+                    raw_vocal = models.offline.isolate(audio, SAMPLE_RATE)
+                    if isinstance(raw_vocal, torch.Tensor):
+                        raw_vocal = raw_vocal.cpu().numpy()
+                sf.write(str(vocal_path), pcm16(raw_vocal), SAMPLE_RATE, subtype="PCM_16")
+        elif not vocal_path.exists():
+            sf.write(str(vocal_path), pcm16(raw_vocal), SAMPLE_RATE, subtype="PCM_16")
+        
+        vocal_url = f"/api/preview/audio/{vocal_filename}?t={time.time()}"
         processed, _ = denoiser.process(audio, raw_vocal, cfg.denoiser)
 
     elif module_name == "declicker":
@@ -467,6 +481,7 @@ def generate_module_preview(
         "status": "success",
         "preview_url": f"/api/preview/audio/{out_filename}?t={time.time()}",
         "original_url": f"/api/preview/audio/{orig_filename}?t={time.time()}",
+        "vocal_url": vocal_url,
         "duration": duration_sec,
         "module": module_name
     }

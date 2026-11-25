@@ -128,6 +128,39 @@ async def upload_audio(file: UploadFile = File(...)):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.get("/api/audio/raw")
+async def get_raw_audio(path: str):
+    """Serves raw, example, or uploaded audio file for Web Audio decoding."""
+    p = pathlib.Path(path)
+    if not p.is_absolute() or not p.exists():
+        # Try relative to cwd
+        if (pathlib.Path.cwd() / p).exists():
+            p = pathlib.Path.cwd() / p
+        else:
+            # Try demo examples
+            examples_p = EXAMPLES_DIR / p.name
+            if examples_p.exists():
+                p = examples_p
+            else:
+                # Try uploads
+                upload_p = engine.TMP_DIR / "uploads" / p.name
+                if upload_p.exists():
+                    p = upload_p
+                else:
+                    # Try previews
+                    preview_p = engine.PREVIEWS_DIR / p.name
+                    if preview_p.exists():
+                        p = preview_p
+                    else:
+                        # Search TMP_DIR
+                        matches = list(engine.TMP_DIR.glob(f"**/{p.name}"))
+                        if matches:
+                            p = matches[0]
+    if not p.exists():
+        raise HTTPException(status_code=404, detail="Audio file not found")
+    return FileResponse(path=str(p), media_type="audio/wav")
+
+
 @app.get("/api/dsp/presets")
 async def get_dsp_presets():
     """Returns presets for Global Mastering, De-Noiser, De-Clicker, De-Crackler, De-Verb, and De-Esser."""
