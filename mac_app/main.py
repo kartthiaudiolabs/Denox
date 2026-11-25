@@ -89,12 +89,12 @@ def run_app():
     bridge_container = [None]
 
     window = webview.create_window(
-        title="Denox // Quantum Audio Studio",
+        title="DENOX // Pro 13 Audio Workstation",
         url=app_url,
-        width=1240,
-        height=840,
-        min_size=(1000, 680),
-        background_color="#06080D",
+        width=1280,
+        height=860,
+        min_size=(1020, 700),
+        background_color="#18191c",
         text_select=False
     )
     bridge = NativeAppBridge(window)

@@ -1,9 +1,14 @@
 #!/usr/bin/env bash
 # macOS Executable for Denox.app
 
-APP_DIR="$(cd "$(dirname "$0")/../../.." && pwd)"
-cd "$APP_DIR" || exit 1
+REPO_DIR="/Users/kartthimusic/Desktop/DESK/GEMINI AG/RC STABLE AUDIO TOOLS/voice-isolator"
+if [ -d "$REPO_DIR" ]; then
+    APP_DIR="$REPO_DIR"
+else
+    APP_DIR="$(cd "$(dirname "$0")/../../.." && pwd)"
+fi
 
+cd "$APP_DIR" || exit 1
 VENV_PYTHON="$APP_DIR/.venv/bin/python"
 
 if [ -f "$VENV_PYTHON" ]; then

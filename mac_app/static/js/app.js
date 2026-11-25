@@ -90,7 +90,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function setSelectedFile(path, filename) {
     selectedFilePath = path;
     if (selectedFileLabel) {
-      selectedFileLabel.innerHTML = `<strong>TARGET FILE:</strong> <span style="color:var(--cyan-neon);">${filename}</span>`;
+      selectedFileLabel.innerHTML = `<strong>TARGET FILE:</strong> <span style="color:var(--logic-blue); font-weight:600;">${filename}</span>`;
     }
     const runBtn = document.getElementById('btn-run-isolation');
     if (runBtn) runBtn.disabled = false;
@@ -421,12 +421,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (wasPlaying) deck.play();
 
-        // Re-draw waveforms
+        // Re-draw waveforms (Logic Pro colors)
         const cvVocal = document.getElementById('canvas-vocal');
         const cvBg = document.getElementById('canvas-bg');
         const progress = deck.duration > 0 ? curTime / deck.duration : 0;
-        WaveformRenderer.drawWaveform(cvVocal, data.waveforms.vocal, '#00f0ff', progress);
-        WaveformRenderer.drawWaveform(cvBg, data.waveforms.background, '#9d00ff', progress);
+        WaveformRenderer.drawWaveform(cvVocal, data.waveforms.vocal, '#2888e0', progress);
+        WaveformRenderer.drawWaveform(cvBg, data.waveforms.background, '#f08c28', progress);
 
         currentStemData.waveforms.vocal = data.waveforms.vocal;
         currentStemData.waveforms.background = data.waveforms.background;
@@ -449,19 +449,19 @@ document.addEventListener('DOMContentLoaded', () => {
     const stemsContainer = document.getElementById('stems-container');
     if (stemsContainer) stemsContainer.style.display = 'flex';
 
-    // Render Canvas Waveforms
+    // Render Canvas Waveforms (Logic Pro colors)
     const cvOrig = document.getElementById('canvas-orig');
     const cvVocal = document.getElementById('canvas-vocal');
     const cvBg = document.getElementById('canvas-bg');
 
-    WaveformRenderer.drawWaveform(cvOrig, data.waveforms.original, '#7f90a6', 0);
-    WaveformRenderer.drawWaveform(cvVocal, data.waveforms.vocal, '#00f0ff', 0);
-    WaveformRenderer.drawWaveform(cvBg, data.waveforms.background, '#9d00ff', 0);
+    WaveformRenderer.drawWaveform(cvOrig, data.waveforms.original, '#8c92a0', 0);
+    WaveformRenderer.drawWaveform(cvVocal, data.waveforms.vocal, '#2888e0', 0);
+    WaveformRenderer.drawWaveform(cvBg, data.waveforms.background, '#f08c28', 0);
 
     // Setup interactive scrubbers on waveforms
-    setupScrubber('canvas-orig-box', cvOrig, data.waveforms.original, '#7f90a6');
-    setupScrubber('canvas-vocal-box', cvVocal, data.waveforms.vocal, '#00f0ff');
-    setupScrubber('canvas-bg-box', cvBg, data.waveforms.background, '#9d00ff');
+    setupScrubber('canvas-orig-box', cvOrig, data.waveforms.original, '#8c92a0');
+    setupScrubber('canvas-vocal-box', cvVocal, data.waveforms.vocal, '#2888e0');
+    setupScrubber('canvas-bg-box', cvBg, data.waveforms.background, '#f08c28');
 
     // Download links
     document.getElementById('btn-dl-vocal').onclick = () => window.open(data.urls.vocal);
@@ -519,9 +519,9 @@ document.addEventListener('DOMContentLoaded', () => {
       const cvOrig = document.getElementById('canvas-orig');
       const cvVocal = document.getElementById('canvas-vocal');
       const cvBg = document.getElementById('canvas-bg');
-      WaveformRenderer.drawWaveform(cvOrig, currentStemData.waveforms.original, '#7f90a6', progress);
-      WaveformRenderer.drawWaveform(cvVocal, currentStemData.waveforms.vocal, '#00f0ff', progress);
-      WaveformRenderer.drawWaveform(cvBg, currentStemData.waveforms.background, '#9d00ff', progress);
+      WaveformRenderer.drawWaveform(cvOrig, currentStemData.waveforms.original, '#8c92a0', progress);
+      WaveformRenderer.drawWaveform(cvVocal, currentStemData.waveforms.vocal, '#2888e0', progress);
+      WaveformRenderer.drawWaveform(cvBg, currentStemData.waveforms.background, '#f08c28', progress);
     }
   };
 
@@ -628,7 +628,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const update = await res.json();
             if (update && update.waveform_output) {
               const liveVocalCv = document.getElementById('canvas-live-vocal');
-              WaveformRenderer.drawWaveform(liveVocalCv, update.waveform_output, '#00f0ff', 1.0);
+              WaveformRenderer.drawWaveform(liveVocalCv, update.waveform_output, '#2888e0', 1.0);
             }
           } catch (err) {
             console.warn("Chunk error:", err);
@@ -713,5 +713,18 @@ document.addEventListener('DOMContentLoaded', () => {
         fileInput && fileInput.click();
       }
     };
+  }
+
+  // --- AUTOLOAD QUERY PARAMETER SUPPORT ---
+  const urlParams = new URLSearchParams(window.location.search);
+  const autoSample = urlParams.get('autoload');
+  if (autoSample) {
+    setTimeout(() => {
+      setSelectedFile(`demo/examples/${autoSample}`, autoSample);
+      if (urlParams.get('auto_run') === '1') {
+        const rBtn = document.getElementById('btn-run-isolation');
+        if (rBtn) rBtn.click();
+      }
+    }, 600);
   }
 });

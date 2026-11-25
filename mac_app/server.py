@@ -27,7 +27,7 @@ STATIC_DIR = BASE_DIR / "static"
 REPO_ROOT = BASE_DIR.parent.resolve()
 EXAMPLES_DIR = REPO_ROOT / "demo" / "examples"
 
-app = FastAPI(title="DENOX // Quantum Audio Studio", version="1.0.0")
+app = FastAPI(title="DENOX // Pro 13 Audio Workstation", version="1.0.0")
 
 app.add_middleware(
     CORSMiddleware,

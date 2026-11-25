@@ -52,21 +52,21 @@ class MasterVisualizer {
     const ctx = this.ctx;
     ctx.clearRect(0, 0, this.width, this.height);
 
-    // Draw futuristic baseline grid & glowing horizon
-    ctx.strokeStyle = 'rgba(0, 240, 255, 0.15)';
+    // Draw Logic Pro Channel EQ subtle baseline & grid
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
     ctx.lineWidth = 1;
     ctx.beginPath();
     ctx.moveTo(0, this.height / 2);
     ctx.lineTo(this.width, this.height / 2);
     ctx.stroke();
 
-    // Ambient sine wave
-    ctx.strokeStyle = 'rgba(0, 240, 255, 0.35)';
+    // Ambient EQ curve
+    ctx.strokeStyle = 'rgba(32, 212, 164, 0.4)';
     ctx.lineWidth = 1.5;
     ctx.beginPath();
     const time = Date.now() * 0.002;
     for (let x = 0; x < this.width; x += 4) {
-      const y = this.height / 2 + Math.sin(x * 0.02 + time) * 8 * Math.sin(x * 0.005);
+      const y = this.height / 2 + Math.sin(x * 0.02 + time) * 6 * Math.sin(x * 0.005);
       if (x === 0) ctx.moveTo(x, y);
       else ctx.lineTo(x, y);
     }
@@ -86,6 +86,16 @@ class MasterVisualizer {
     const ctx = this.ctx;
     ctx.clearRect(0, 0, this.width, this.height);
 
+    // Logic Pro Channel EQ Analyzer Grid
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+    ctx.lineWidth = 1;
+    for (let gy = 20; gy < this.height; gy += 25) {
+      ctx.beginPath();
+      ctx.moveTo(0, gy);
+      ctx.lineTo(this.width, gy);
+      ctx.stroke();
+    }
+
     const barCount = 64;
     const barWidth = (this.width / barCount) * 0.75;
     const gap = (this.width / barCount) * 0.25;
@@ -93,34 +103,29 @@ class MasterVisualizer {
     for (let i = 0; i < barCount; i++) {
       const dataIndex = Math.floor((i / barCount) * this.dataArray.length);
       const val = this.dataArray[dataIndex] / 255.0; // 0 to 1
-      const barHeight = Math.max(3, val * (this.height - 10));
+      const barHeight = Math.max(2, val * (this.height - 8));
 
       const x = i * (barWidth + gap) + gap / 2;
       const y = this.height - barHeight;
 
-      // Holographic gradient
+      // Logic Pro Channel EQ signature gradient (Mint/Cyan to Logic Blue)
       const grad = ctx.createLinearGradient(0, y, 0, this.height);
-      grad.addColorStop(0, '#00f0ff');
-      grad.addColorStop(0.6, '#9d00ff');
-      grad.addColorStop(1, 'rgba(0, 240, 255, 0.2)');
+      grad.addColorStop(0, '#20d4a4');
+      grad.addColorStop(0.5, '#2888e0');
+      grad.addColorStop(1, '#1b3f68');
 
       ctx.fillStyle = grad;
-      ctx.shadowColor = '#00f0ff';
-      ctx.shadowBlur = val > 0.5 ? 12 : 4;
       ctx.fillRect(x, y, barWidth, barHeight);
 
       // Peak cap dot
-      ctx.fillStyle = '#ffffff';
-      ctx.shadowBlur = 8;
-      ctx.shadowColor = '#ffffff';
-      ctx.fillRect(x, y - 2, barWidth, 2);
+      ctx.fillStyle = '#f0f4f8';
+      ctx.fillRect(x, y - 1, barWidth, 1.5);
     }
-    ctx.shadowBlur = 0;
   }
 }
 
 class WaveformRenderer {
-  static drawWaveform(canvas, peaks, color = '#00f0ff', progress = 0) {
+  static drawWaveform(canvas, peaks, color = '#2888e0', progress = 0) {
     if (!canvas || !peaks || peaks.length === 0) return;
     const ctx = canvas.getContext('2d');
     const rect = canvas.getBoundingClientRect();
@@ -145,11 +150,8 @@ class WaveformRenderer {
 
       if (x <= progressX) {
         ctx.strokeStyle = color;
-        ctx.shadowColor = color;
-        ctx.shadowBlur = 6;
       } else {
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
-        ctx.shadowBlur = 0;
+        ctx.strokeStyle = '#434752';
       }
 
       ctx.lineWidth = Math.max(1, step * 0.7);
@@ -158,7 +160,6 @@ class WaveformRenderer {
       ctx.lineTo(x, Math.max(y2, y1 + 1));
       ctx.stroke();
     }
-    ctx.shadowBlur = 0;
   }
 }
 

@@ -18,13 +18,13 @@
         <span style="width:12px; height:12px; border-radius:50%; background:#27c93f; display:inline-block;"></span>
       </div>
       <div class="brand-badge">
-        <svg class="brand-icon" viewBox="0 0 24 24" fill="none" stroke="#00f0ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <svg class="brand-icon" viewBox="0 0 24 24" fill="none" stroke="#2888e0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
           <polyline points="2 17 12 22 22 17"></polyline>
           <polyline points="2 12 12 17 22 12"></polyline>
         </svg>
         <span class="brand-text">DENOX</span>
-        <span class="brand-tag">QUANTUM 1.0</span>
+        <span class="brand-tag">PRO 13</span>
       </div>
     </div>
 
@@ -125,17 +125,17 @@
         </div>
 
         <!-- VOICE ISOLATION THRESHOLD (0 - 100%) -->
-        <div style="background:rgba(0, 240, 255, 0.04); border:1px solid rgba(0, 240, 255, 0.2); border-radius:var(--radius-md); padding:14px; margin-bottom:18px;">
+        <div style="background:#191b1f; border:1px solid var(--border-main); border-radius:var(--radius-md); padding:14px; margin-bottom:18px;">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-            <label class="control-label" style="color:var(--cyan-neon); font-size:12px; font-weight:700;">
+            <label class="control-label" style="color:var(--logic-blue); font-size:12px; font-weight:700;">
               VOICE ISOLATION THRESHOLD (NOISE CLEANING INTENSITY)
             </label>
-            <span id="threshold-val-display" style="font-family:var(--font-hud); font-size:13px; font-weight:700; color:var(--cyan-neon);">
+            <span id="threshold-val-display" style="font-family:var(--font-lcd); font-size:13px; font-weight:700; color:var(--logic-blue);">
               100% (PURE ISOLATED VOCAL)
             </span>
           </div>
           <input type="range" id="slider-isolation-threshold" min="0" max="100" value="100" step="1" class="cyber-range">
-          <div style="display:flex; justify-content:space-between; font-family:var(--font-hud); font-size:9px; color:var(--text-muted); margin-top:4px;">
+          <div style="display:flex; justify-content:space-between; font-family:var(--font-lcd); font-size:9px; color:var(--text-muted); margin-top:4px;">
             <span>0% (RAW AUDIO)</span>
             <span>25% (SUBTLE REDUCTION)</span>
             <span>50% (NATURAL AMBIENCE)</span>
@@ -148,11 +148,11 @@
         <div class="dsp-suite-container">
           <div class="dsp-suite-header">
             <div style="display:flex; align-items:center; gap:8px;">
-              <span class="hud-dot" style="background:var(--violet-neon); box-shadow:0 0 8px var(--violet-neon);"></span>
-              <span class="panel-title" style="color:var(--violet-neon); font-size:12px;">DENOX DSP MASTERING SUITE</span>
+              <span class="hud-dot" style="background:var(--logic-cyan); box-shadow:0 0 6px var(--logic-cyan);"></span>
+              <span class="panel-title" style="color:var(--logic-cyan); font-size:12px;">DENOX DSP MASTERING SUITE</span>
             </div>
             <div style="display:flex; align-items:center; gap:10px;">
-              <span style="font-family:var(--font-hud); font-size:10px; color:var(--text-dim);">GLOBAL PRESET:</span>
+              <span style="font-family:var(--font-ui); font-size:10px; font-weight:600; color:var(--text-secondary);">GLOBAL PRESET:</span>
               <select class="cyber-select" id="select-global-preset" style="padding:4px 8px; font-size:11px;">
                 <option value="custom">Custom Configuration</option>
                 <option value="ultra_clean_podcast">Ultra-Clean Podcast (Max Clarity)</option>
@@ -168,7 +168,7 @@
             <!-- MODULE 1: DE-CLICKER & DE-CRACKLER -->
             <div class="dsp-module-card module-active" id="card-module-declicker">
               <div class="dsp-module-titlebar">
-                <span style="font-family:var(--font-hud); font-size:11px; font-weight:700; color:var(--cyan-neon);">
+                <span style="font-family:var(--font-ui); font-size:11px; font-weight:700; color:var(--logic-blue);">
                   [MOD-01] DE-CLICKER & CRACKLE
                 </span>
                 <button class="dsp-toggle-btn active" id="btn-toggle-declicker">ACTIVE</button>
@@ -204,7 +204,7 @@
             <!-- MODULE 2: DE-VERB (DEREVERBERATION) -->
             <div class="dsp-module-card module-active" id="card-module-deverb">
               <div class="dsp-module-titlebar">
-                <span style="font-family:var(--font-hud); font-size:11px; font-weight:700; color:var(--violet-neon);">
+                <span style="font-family:var(--font-ui); font-size:11px; font-weight:700; color:var(--logic-amber);">
                   [MOD-02] DE-VERB (ACOUSTICS)
                 </span>
                 <button class="dsp-toggle-btn active" id="btn-toggle-deverb">ACTIVE</button>
@@ -240,7 +240,7 @@
             <!-- MODULE 3: DE-ESSER (SIBILANCE) -->
             <div class="dsp-module-card module-active" id="card-module-deesser">
               <div class="dsp-module-titlebar">
-                <span style="font-family:var(--font-hud); font-size:11px; font-weight:700; color:var(--emerald-neon);">
+                <span style="font-family:var(--font-ui); font-size:11px; font-weight:700; color:var(--logic-cyan);">
                   [MOD-03] DE-ESSER (HARSH 'S')
                 </span>
                 <button class="dsp-toggle-btn active" id="btn-toggle-deesser">ACTIVE</button>
@@ -376,7 +376,7 @@
           <button class="btn-cyber-primary" id="btn-start-mic" style="flex:1;">
             START MICROPHONE STREAM
           </button>
-          <button class="btn-icon" id="btn-stop-mic" disabled style="padding:14px 28px; border-color:var(--crimson-neon); color:var(--crimson-neon);">
+          <button class="btn-icon" id="btn-stop-mic" disabled style="padding:14px 28px; border-color:var(--logic-red); color:var(--logic-red);">
             FINISH & SAVE TAKE
           </button>
         </div>
@@ -481,7 +481,7 @@ Ready. Click "RUN SYSTEM DIAGNOSTICS" to verify checkpoint SHA-256 integrity and
 
     <div style="display:flex; align-items:center; gap:10px;">
       <span style="font-family:var(--font-hud); font-size:11px; color:var(--text-dim);">VOL</span>
-      <input type="range" id="master-vol-slider" min="0" max="1" step="0.01" value="1.0" style="accent-color:var(--cyan-neon); width:80px;">
+      <input type="range" id="master-vol-slider" min="0" max="1" step="0.01" value="1.0" style="accent-color:var(--logic-blue); width:80px;">
     </div>
   </footer>
 
