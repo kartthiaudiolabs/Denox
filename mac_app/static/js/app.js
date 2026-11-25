@@ -114,6 +114,14 @@ document.addEventListener('DOMContentLoaded', () => {
   // --- DSP MASTERING SUITE & THRESHOLD STATE ---
   const dspState = {
     threshold: 1.0,
+    denoiser: {
+      enabled: true,
+      preset: 'pure_isolated_vocal',
+      threshold: 1.0,
+      mode: 'spectral_gate',
+      reduction_db: -60.0,
+      ambient_bleed: 0.0
+    },
     declicker: {
       enabled: true,
       preset: 'mouth_saliva_tame',
@@ -161,7 +169,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function populateModuleDropdowns(cache) {
     if (!cache) return;
-    const modules = ['declicker', 'decrackler', 'deverb', 'deesser'];
+    const modules = ['denoiser', 'declicker', 'decrackler', 'deverb', 'deesser'];
     modules.forEach(modKey => {
       const select = document.getElementById(`preset-${modKey}`);
       const presetsMap = cache[`${modKey}_presets`];
@@ -192,14 +200,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
   loadDspPresets();
 
-  // Threshold Slider
+  // Threshold Slider (De-Noiser Intensity)
   const thresholdSlider = document.getElementById('slider-isolation-threshold');
   const thresholdDisplay = document.getElementById('threshold-val-display');
+  const dispDnthresh = document.getElementById('disp-dn-thresh');
   if (thresholdSlider) {
     thresholdSlider.addEventListener('input', (e) => {
       const val = parseInt(e.target.value, 10);
       dspState.threshold = val / 100.0;
-      let desc = "PURE ISOLATED VOCAL";
+      dspState.denoiser.threshold = val / 100.0;
+      if (dispDnthresh) dispDnthresh.innerText = `${val}%`;
+      let desc = "ZERO BACKGROUND NOISE";
       if (val === 0) desc = "RAW AUDIO (0% CLEAN)";
       else if (val <= 25) desc = "SUBTLE NOISE ATTENUATION";
       else if (val <= 60) desc = "NATURAL SPEECH & ROOM AIR";
@@ -222,6 +233,7 @@ document.addEventListener('DOMContentLoaded', () => {
       card.classList.toggle('module-bypassed', !active);
     };
   }
+  setupModuleToggle('btn-toggle-denoiser', 'card-module-denoiser', 'denoiser');
   setupModuleToggle('btn-toggle-declicker', 'card-module-declicker', 'declicker');
   setupModuleToggle('btn-toggle-decrackler', 'card-module-decrackler', 'decrackler');
   setupModuleToggle('btn-toggle-deverb', 'card-module-deverb', 'deverb');
@@ -256,14 +268,8 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!dspPresetsCache || !dspPresetsCache.global_presets[key]) return;
       const p = dspPresetsCache.global_presets[key];
 
-      // Update Threshold
-      const threshVal = Math.round(p.isolation_threshold * 100);
-      if (thresholdSlider) {
-        thresholdSlider.value = threshVal;
-        thresholdSlider.dispatchEvent(new Event('input'));
-      }
-
       // Update Sub-modules
+      if (p.denoiser) applyModulePreset('denoiser', p.denoiser.preset, p.denoiser.enabled);
       if (p.declicker) applyModulePreset('declicker', p.declicker.preset, p.declicker.enabled);
       if (p.decrackler) applyModulePreset('decrackler', p.decrackler.preset, p.decrackler.enabled);
       if (p.deverb) applyModulePreset('deverb', p.deverb.preset, p.deverb.enabled);
@@ -293,7 +299,25 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     if (presetSelect) presetSelect.value = presetKey;
 
-    if (modKey === 'declicker') {
+    if (modKey === 'denoiser') {
+      dspState.denoiser.threshold = p.threshold;
+      dspState.denoiser.mode = p.mode;
+      dspState.denoiser.ambient_bleed = p.ambient_bleed || 0.0;
+      dspState.threshold = p.threshold;
+      const tSlider = document.getElementById('slider-isolation-threshold');
+      if (tSlider) tSlider.value = Math.round(p.threshold * 100);
+      const dThresh = document.getElementById('disp-dn-thresh');
+      if (dThresh) dThresh.innerText = `${Math.round(p.threshold * 100)}%`;
+      if (thresholdDisplay) {
+        let desc = "ZERO BACKGROUND NOISE";
+        const val = Math.round(p.threshold * 100);
+        if (val === 0) desc = "RAW AUDIO (0% CLEAN)";
+        else if (val <= 25) desc = "SUBTLE NOISE ATTENUATION";
+        else if (val <= 60) desc = "NATURAL SPEECH & ROOM AIR";
+        else if (val < 100) desc = "WARM BALANCED SPEECH";
+        thresholdDisplay.innerText = `${val}% (${desc})`;
+      }
+    } else if (modKey === 'declicker') {
       dspState.declicker.sensitivity = p.sensitivity;
       dspState.declicker.click_width_samples = p.click_width_samples;
       dspState.declicker.mode = p.mode;
@@ -349,7 +373,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // Individual Module Preset dropdown changes
-  ['declicker', 'decrackler', 'deverb', 'deesser'].forEach(modKey => {
+  ['denoiser', 'declicker', 'decrackler', 'deverb', 'deesser'].forEach(modKey => {
     const sel = document.getElementById(`preset-${modKey}`);
     if (sel) {
       sel.onchange = (e) => applyModulePreset(modKey, e.target.value, dspState[modKey].enabled);

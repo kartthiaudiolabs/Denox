@@ -78,7 +78,7 @@
         <div class="panel-header">
           <div class="panel-title">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polygon points="10 8 16 12 10 16 10 8"></polygon></svg>
-            OFFLINE VOCAL & BACKGROUND SEPARATION
+            NEURAL DE-NOISER & VOCAL SEPARATION
           </div>
           <div class="panel-subtitle" id="selected-file-label">Drag & drop or select an audio file</div>
         </div>
@@ -119,23 +119,74 @@
           </div>
         </div>
 
-        <!-- VOICE ISOLATION THRESHOLD (0 - 100%) -->
-        <div style="background:#191b1f; border:1px solid var(--border-main); border-radius:var(--radius-md); padding:14px; margin-bottom:18px;">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-            <label class="control-label" style="color:var(--logic-blue); font-size:12px; font-weight:700;">
-              VOICE ISOLATION THRESHOLD (NOISE CLEANING INTENSITY)
-            </label>
-            <span id="threshold-val-display" style="font-family:var(--font-lcd); font-size:13px; font-weight:700; color:var(--logic-blue);">
-              100% (PURE ISOLATED VOCAL)
-            </span>
+        <!-- [MASTER MOD] DE-NOISER (NEURAL BACKGROUND NOISE SEPARATION & ISOLATION) -->
+        <div class="dsp-module-card module-active" id="card-module-denoiser" style="margin-bottom:18px; border-left:4px solid var(--logic-blue);">
+          <div class="dsp-module-titlebar" style="margin-bottom:12px;">
+            <div style="display:flex; align-items:center; gap:10px;">
+              <span class="hud-dot" style="background:var(--logic-blue); box-shadow:0 0 6px var(--logic-blue);"></span>
+              <span style="font-family:var(--font-ui); font-size:12px; font-weight:700; color:var(--logic-blue); letter-spacing:0.3px;">
+                [MASTER MOD] DE-NOISER (NEURAL BACKGROUND NOISE SEPARATION)
+              </span>
+            </div>
+            <div style="display:flex; align-items:center; gap:12px;">
+              <span id="threshold-val-display" style="font-family:var(--font-lcd); font-size:12px; font-weight:700; color:var(--logic-blue);">
+                100% (ZERO BACKGROUND NOISE)
+              </span>
+              <button class="dsp-toggle-btn active" id="btn-toggle-denoiser">ACTIVE</button>
+            </div>
           </div>
-          <input type="range" id="slider-isolation-threshold" min="0" max="100" value="100" step="1" class="cyber-range">
-          <div style="display:flex; justify-content:space-between; font-family:var(--font-lcd); font-size:9px; color:var(--text-muted); margin-top:4px;">
-            <span>0% (RAW AUDIO)</span>
-            <span>25% (SUBTLE REDUCTION)</span>
-            <span>50% (NATURAL AMBIENCE)</span>
-            <span>75% (WARM SPEECH)</span>
-            <span>100% (ZERO BACKGROUND NOISE)</span>
+
+          <div style="display:grid; grid-template-columns:minmax(280px, 1.2fr) minmax(280px, 1.8fr); gap:16px; align-items:end;">
+            <div class="slider-group" style="margin-bottom:0;">
+              <label class="control-label" style="font-size:10px;">DE-NOISER PRESET (20 MEDIA PRO PRESETS)</label>
+              <select class="cyber-select" id="preset-denoiser" style="padding:6px 10px; font-size:11px;">
+                <optgroup label="Podcast & Studio Dialogue">
+                  <option value="podcast_hvac_tame">Studio AC & HVAC Hum Reduction</option>
+                  <option value="pc_fan_laptop_whine">Computer Fan & Laptop Coil Whine</option>
+                  <option value="whisper_room_air">Whisper Voice & Delicate Room Air</option>
+                  <option value="pure_isolated_vocal" selected>Zero-Noise Vocal Booth (100% Isolation)</option>
+                </optgroup>
+                <optgroup label="Broadcast, Field & Mobile">
+                  <option value="city_traffic_rumble">Urban Street Traffic & Low Rumble</option>
+                  <option value="outdoor_wind_buffet">Outdoor Wind & Air Buffet Suppression</option>
+                  <option value="cafeteria_crowd_babble">Restaurant & Café Crowd Chatter</option>
+                  <option value="smartphone_voice_memo">Mobile Phone Voice Memo Clean</option>
+                </optgroup>
+                <optgroup label="Cinema, Film & Location Sound">
+                  <option value="on_location_generator">Diesel Generator & Inverter Whine</option>
+                  <option value="camera_fan_drone">Cinema Camera Cooling Fan Whine</option>
+                  <option value="aircraft_overhead_pass">Jet Aircraft & Overhead Drone Tame</option>
+                  <option value="rain_weather_isolation">Heavy Rain & Window Spatter Isolation</option>
+                </optgroup>
+                <optgroup label="Live Stage & Music Stems">
+                  <option value="stage_drum_spill_bleed">Live Stage Drum & Cymbal Bleed Kill</option>
+                  <option value="pa_monitor_feedback_air">PA Floor Monitor Acoustic Spill</option>
+                  <option value="acoustic_room_subtle_clean">Subtle Acoustic Clean (Preserve Live Feel)</option>
+                  <option value="backing_vocal_bleed">Guitar & Bass Bleed Suppression</option>
+                </optgroup>
+                <optgroup label="Archival & Industrial Restoration">
+                  <option value="mains_hum_50_60hz">50Hz/60Hz Electrical Mains Hum & Buzz</option>
+                  <option value="analog_tape_hiss_wash">Cassette & Reel-to-Reel Tape Hiss</option>
+                  <option value="industrial_plant_drone">Factory Machinery & Heavy Motor Drone</option>
+                  <option value="vintage_radio_static_floor">Vintage AM/Shortwave Static Floor</option>
+                </optgroup>
+              </select>
+            </div>
+
+            <div class="slider-group" style="margin-bottom:0;">
+              <div class="slider-header" style="margin-bottom:4px;">
+                <span>NOISE REDUCTION THRESHOLD (INTENSITY)</span>
+                <span id="disp-dn-thresh" style="font-family:var(--font-lcd); color:var(--logic-blue); font-weight:700;">100%</span>
+              </div>
+              <input type="range" id="slider-isolation-threshold" min="0" max="100" value="100" step="1" class="cyber-range">
+              <div style="display:flex; justify-content:space-between; font-family:var(--font-lcd); font-size:9px; color:var(--text-muted); margin-top:4px;">
+                <span>0% (RAW AUDIO)</span>
+                <span>25% (SUBTLE)</span>
+                <span>50% (NATURAL)</span>
+                <span>75% (WARM)</span>
+                <span>100% (ZERO NOISE)</span>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -465,7 +516,7 @@
           <!-- CHANNEL 3: EXTRACTED BACKGROUND NOISE -->
           <div class="stem-card" id="card-background">
             <div class="stem-header">
-              <span class="stem-badge badge-bg">CH-03 // BACKGROUND RESIDUAL (AMBIENCE)</span>
+              <span class="stem-badge badge-bg">CH-03 // DE-NOISED NOISE RESIDUAL (AMBIENCE)</span>
               <div class="stem-actions">
                 <button class="btn-tag" id="solo-background">S</button>
                 <button class="btn-tag" id="mute-background">M</button>

@@ -122,9 +122,10 @@ async def upload_audio(file: UploadFile = File(...)):
 
 @app.get("/api/dsp/presets")
 async def get_dsp_presets():
-    """Returns presets for Global Mastering, De-Clicker, De-Crackler, De-Verb, and De-Esser."""
+    """Returns presets for Global Mastering, De-Noiser, De-Clicker, De-Crackler, De-Verb, and De-Esser."""
     return {
         "global_presets": dsp_module.GLOBAL_CHAIN_PRESETS,
+        "denoiser_presets": dsp_module.DENOISER_PRESETS,
         "declicker_presets": dsp_module.DECLICKER_PRESETS,
         "decrackler_presets": dsp_module.DECRACKLER_PRESETS,
         "deverb_presets": dsp_module.DEVERB_PRESETS,

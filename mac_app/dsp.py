@@ -11,8 +11,218 @@ from scipy.interpolate import CubicSpline
 
 
 # -----------------------------------------------------------------------------
-# 1. THRESHOLD & NEURAL BLENDING
+# 1. DE-NOISER MODULE (NEURAL BACKGROUND NOISE SEPARATION & ROOM TONE)
 # -----------------------------------------------------------------------------
+
+@dataclasses.dataclass
+class DeNoiserConfig:
+    enabled: bool = True
+    preset: str = "pure_isolated_vocal"
+    threshold: float = 1.0            # 0.0 (0% clean, raw audio) to 1.0 (100% clean, pure isolated vocal)
+    mode: str = "spectral_gate"       # "spectral_gate", "blend", "air_preserve"
+    reduction_db: float = -60.0       # max attenuation dB (-12dB to -60dB)
+    ambient_bleed: float = 0.0        # natural room tone / background bleed (0.0 to 0.3)
+
+
+DENOISER_PRESETS: Dict[str, Dict[str, Any]] = {
+    # --- Category: Podcast & Studio Dialogue ---
+    "podcast_hvac_tame": {
+        "label": "Studio AC & HVAC Hum Reduction",
+        "category": "Podcast & Studio Dialogue",
+        "threshold": 0.85,
+        "mode": "spectral_gate",
+        "ambient_bleed": 0.08
+    },
+    "pc_fan_laptop_whine": {
+        "label": "Computer Fan & Laptop Coil Whine",
+        "category": "Podcast & Studio Dialogue",
+        "threshold": 0.90,
+        "mode": "spectral_gate",
+        "ambient_bleed": 0.05
+    },
+    "whisper_room_air": {
+        "label": "Whisper Voice & Delicate Room Air",
+        "category": "Podcast & Studio Dialogue",
+        "threshold": 0.65,
+        "mode": "air_preserve",
+        "ambient_bleed": 0.20
+    },
+    "pure_isolated_vocal": {
+        "label": "Zero-Noise Vocal Booth (100% Isolation)",
+        "category": "Podcast & Studio Dialogue",
+        "threshold": 1.00,
+        "mode": "spectral_gate",
+        "ambient_bleed": 0.00
+    },
+
+    # --- Category: Broadcast, Field & Mobile ---
+    "city_traffic_rumble": {
+        "label": "Urban Street Traffic & Low Rumble",
+        "category": "Broadcast, Field & Mobile",
+        "threshold": 0.88,
+        "mode": "spectral_gate",
+        "ambient_bleed": 0.06
+    },
+    "outdoor_wind_buffet": {
+        "label": "Outdoor Wind & Air Buffet Suppression",
+        "category": "Broadcast, Field & Mobile",
+        "threshold": 0.92,
+        "mode": "spectral_gate",
+        "ambient_bleed": 0.04
+    },
+    "cafeteria_crowd_babble": {
+        "label": "Restaurant & Café Crowd Chatter",
+        "category": "Broadcast, Field & Mobile",
+        "threshold": 0.94,
+        "mode": "spectral_gate",
+        "ambient_bleed": 0.03
+    },
+    "smartphone_voice_memo": {
+        "label": "Mobile Phone Voice Memo Clean",
+        "category": "Broadcast, Field & Mobile",
+        "threshold": 0.82,
+        "mode": "blend",
+        "ambient_bleed": 0.10
+    },
+
+    # --- Category: Cinema, Film & Location Sound ---
+    "on_location_generator": {
+        "label": "Diesel Generator & Inverter Whine",
+        "category": "Cinema, Film & Location Sound",
+        "threshold": 0.95,
+        "mode": "spectral_gate",
+        "ambient_bleed": 0.02
+    },
+    "camera_fan_drone": {
+        "label": "Cinema Camera Cooling Fan Whine",
+        "category": "Cinema, Film & Location Sound",
+        "threshold": 0.89,
+        "mode": "spectral_gate",
+        "ambient_bleed": 0.05
+    },
+    "aircraft_overhead_pass": {
+        "label": "Jet Aircraft & Overhead Drone Tame",
+        "category": "Cinema, Film & Location Sound",
+        "threshold": 0.87,
+        "mode": "spectral_gate",
+        "ambient_bleed": 0.07
+    },
+    "rain_weather_isolation": {
+        "label": "Heavy Rain & Window Spatter Isolation",
+        "category": "Cinema, Film & Location Sound",
+        "threshold": 0.93,
+        "mode": "spectral_gate",
+        "ambient_bleed": 0.03
+    },
+
+    # --- Category: Live Stage & Music Stems ---
+    "stage_drum_spill_bleed": {
+        "label": "Live Stage Drum & Cymbal Bleed Kill",
+        "category": "Live Stage & Music Stems",
+        "threshold": 0.96,
+        "mode": "spectral_gate",
+        "ambient_bleed": 0.02
+    },
+    "pa_monitor_feedback_air": {
+        "label": "PA Floor Monitor Acoustic Spill",
+        "category": "Live Stage & Music Stems",
+        "threshold": 0.90,
+        "mode": "spectral_gate",
+        "ambient_bleed": 0.05
+    },
+    "acoustic_room_subtle_clean": {
+        "label": "Subtle Acoustic Clean (Preserve Live Feel)",
+        "category": "Live Stage & Music Stems",
+        "threshold": 0.55,
+        "mode": "blend",
+        "ambient_bleed": 0.25
+    },
+    "backing_vocal_bleed": {
+        "label": "Guitar & Bass Bleed Suppression",
+        "category": "Live Stage & Music Stems",
+        "threshold": 0.86,
+        "mode": "spectral_gate",
+        "ambient_bleed": 0.08
+    },
+
+    # --- Category: Archival & Industrial Restoration ---
+    "mains_hum_50_60hz": {
+        "label": "50Hz/60Hz Electrical Mains Hum & Buzz",
+        "category": "Archival & Industrial Restoration",
+        "threshold": 0.91,
+        "mode": "spectral_gate",
+        "ambient_bleed": 0.04
+    },
+    "analog_tape_hiss_wash": {
+        "label": "Cassette & Reel-to-Reel Tape Hiss",
+        "category": "Archival & Industrial Restoration",
+        "threshold": 0.84,
+        "mode": "spectral_gate",
+        "ambient_bleed": 0.09
+    },
+    "industrial_plant_drone": {
+        "label": "Factory Machinery & Heavy Motor Drone",
+        "category": "Archival & Industrial Restoration",
+        "threshold": 0.97,
+        "mode": "spectral_gate",
+        "ambient_bleed": 0.01
+    },
+    "vintage_radio_static_floor": {
+        "label": "Vintage AM/Shortwave Static Floor",
+        "category": "Archival & Industrial Restoration",
+        "threshold": 0.80,
+        "mode": "blend",
+        "ambient_bleed": 0.12
+    }
+}
+
+
+class DeNoiser:
+    """Applies multi-mode neural background noise separation, thresholding, and room tone control."""
+
+    def __init__(self, sample_rate: int = 48000):
+        self.sample_rate = sample_rate
+
+    def process(
+        self,
+        original: np.ndarray,
+        isolated: np.ndarray,
+        config: DeNoiserConfig
+    ) -> Tuple[np.ndarray, Dict[str, Any]]:
+        """Separates and attenuates background noise according to threshold and mode."""
+        if not config.enabled:
+            min_len = min(len(original), len(isolated))
+            return original[:min_len].copy(), {"threshold": 0.0, "mode": "bypassed"}
+
+        threshold = float(np.clip(config.threshold, 0.0, 1.0))
+        min_len = min(len(original), len(isolated))
+        orig = original[:min_len]
+        iso = isolated[:min_len]
+
+        if threshold >= 0.999 and config.ambient_bleed <= 0.001:
+            return iso, {"threshold": 1.0, "mode": config.mode}
+        if threshold <= 0.001:
+            return orig, {"threshold": 0.0, "mode": config.mode}
+
+        noise_residual = orig - iso
+
+        if config.mode == "blend":
+            angle = threshold * (math.pi / 2.0)
+            out = math.cos(angle) * orig + math.sin(angle) * iso
+            return np.ascontiguousarray(out, dtype=np.float32), {"threshold": threshold, "mode": "blend"}
+
+        if config.mode == "air_preserve":
+            attenuation = (1.0 - threshold) ** 1.2
+            bleed = max(attenuation, config.ambient_bleed)
+            blended = iso + noise_residual * bleed
+            return np.ascontiguousarray(blended, dtype=np.float32), {"threshold": threshold, "mode": "air_preserve"}
+
+        # Default: "spectral_gate" soft mask
+        attenuation_linear = ((1.0 - threshold) ** 1.5) + config.ambient_bleed
+        attenuation_linear = float(np.clip(attenuation_linear, 0.0, 1.0))
+        blended = iso + noise_residual * attenuation_linear
+        return np.ascontiguousarray(blended, dtype=np.float32), {"threshold": threshold, "mode": "spectral_gate"}
+
 
 def apply_isolation_threshold(
     original: np.ndarray,
@@ -20,36 +230,11 @@ def apply_isolation_threshold(
     threshold: float = 1.0,
     mode: str = "spectral_gate"
 ) -> np.ndarray:
-    """Applies a 0-100% threshold to control how aggressively noise is removed.
-
-    Args:
-        original: Raw input audio (float32 mono, 48kHz).
-        isolated: 100% neural isolated vocal audio (float32 mono, 48kHz).
-        threshold: 0.0 (0% cleaning = raw audio) to 1.0 (100% cleaning = pure isolated vocal).
-        mode: "blend" for linear/power blend, "spectral_gate" for natural room-tone preservation.
-
-    Returns:
-        Processed audio with user-selected noise reduction threshold.
-    """
-    threshold = float(np.clip(threshold, 0.0, 1.0))
-    if threshold >= 0.999:
-        return isolated
-    if threshold <= 0.001:
-        return original
-
-    min_len = min(len(original), len(isolated))
-    orig = original[:min_len]
-    iso = isolated[:min_len]
-
-    if mode == "blend":
-        angle = threshold * (math.pi / 2.0)
-        out = math.cos(angle) * orig + math.sin(angle) * iso
-        return np.ascontiguousarray(out, dtype=np.float32)
-
-    noise_residual = orig - iso
-    attenuation_linear = (1.0 - threshold) ** 1.5
-    blended = iso + noise_residual * attenuation_linear
-    return np.ascontiguousarray(blended, dtype=np.float32)
+    """Convenience helper for standalone thresholding."""
+    denoiser = DeNoiser()
+    cfg = DeNoiserConfig(enabled=True, threshold=threshold, mode=mode)
+    out, _ = denoiser.process(original, isolated, cfg)
+    return out
 
 
 # -----------------------------------------------------------------------------
@@ -1055,20 +1240,35 @@ class DeEsser:
 
 @dataclasses.dataclass
 class DenoxMasteringChainConfig:
-    isolation_threshold: float = 1.0
-    threshold_mode: str = "spectral_gate"
-
-    # Distinct Modules
+    # Dedicated 5-Stage Audio Modules
+    denoiser: DeNoiserConfig = dataclasses.field(default_factory=DeNoiserConfig)
     declicker: DeClickerConfig = dataclasses.field(default_factory=DeClickerConfig)
     decrackler: DeCracklerConfig = dataclasses.field(default_factory=DeCracklerConfig)
     deverb: DeVerbConfig = dataclasses.field(default_factory=DeVerbConfig)
     deesser: DeEsserConfig = dataclasses.field(default_factory=DeEsserConfig)
 
+    # Backwards compatibility helper for isolation threshold
+    @property
+    def isolation_threshold(self) -> float:
+        return self.denoiser.threshold
+
+    @isolation_threshold.setter
+    def isolation_threshold(self, val: float):
+        self.denoiser.threshold = val
+
+    @property
+    def threshold_mode(self) -> str:
+        return self.denoiser.mode
+
+    @threshold_mode.setter
+    def threshold_mode(self, val: str):
+        self.denoiser.mode = val
+
 
 GLOBAL_CHAIN_PRESETS: Dict[str, Dict[str, Any]] = {
     "ultra_clean_podcast": {
         "name": "Ultra-Clean Podcast (Max Clarity)",
-        "isolation_threshold": 0.92,
+        "denoiser": {"enabled": True, "preset": "pure_isolated_vocal", "threshold": 0.95},
         "declicker": {"enabled": True, "preset": "mouth_saliva_tame"},
         "decrackler": {"enabled": True, "preset": "silk_cotton_rustle"},
         "deverb": {"enabled": True, "preset": "tight_vocal_booth"},
@@ -1076,7 +1276,7 @@ GLOBAL_CHAIN_PRESETS: Dict[str, Dict[str, Any]] = {
     },
     "studio_vocal_booth": {
         "name": "Studio Vocal Booth Master",
-        "isolation_threshold": 1.00,
+        "denoiser": {"enabled": True, "preset": "pure_isolated_vocal", "threshold": 1.00},
         "declicker": {"enabled": True, "preset": "lead_vocal_transparent"},
         "decrackler": {"enabled": False, "preset": "condenser_moisture_sputter"},
         "deverb": {"enabled": True, "preset": "tight_vocal_booth"},
@@ -1084,7 +1284,7 @@ GLOBAL_CHAIN_PRESETS: Dict[str, Dict[str, Any]] = {
     },
     "natural_warmth": {
         "name": "Natural Warmth (Retain Room Air)",
-        "isolation_threshold": 0.70,
+        "denoiser": {"enabled": True, "preset": "whisper_room_air", "threshold": 0.70},
         "declicker": {"enabled": True, "preset": "mouth_saliva_tame"},
         "decrackler": {"enabled": False, "preset": "vinyl_surface_gentle"},
         "deverb": {"enabled": False, "preset": "subtle_clarity_air_keeper"},
@@ -1092,7 +1292,7 @@ GLOBAL_CHAIN_PRESETS: Dict[str, Dict[str, Any]] = {
     },
     "heavy_room_killer": {
         "name": "Echo & Cavern Eliminator",
-        "isolation_threshold": 1.00,
+        "denoiser": {"enabled": True, "preset": "pure_isolated_vocal", "threshold": 1.00},
         "declicker": {"enabled": True, "preset": "digital_buffer_clicks"},
         "decrackler": {"enabled": True, "preset": "wireless_rf_static"},
         "deverb": {"enabled": True, "preset": "concrete_stairwell_ring"},
@@ -1100,7 +1300,7 @@ GLOBAL_CHAIN_PRESETS: Dict[str, Dict[str, Any]] = {
     },
     "vintage_vinyl_restoration": {
         "name": "Vintage Vinyl & Archival Restoration",
-        "isolation_threshold": 0.80,
+        "denoiser": {"enabled": True, "preset": "vintage_radio_static_floor", "threshold": 0.80},
         "declicker": {"enabled": True, "preset": "vinyl_33rpm_dust_ticks"},
         "decrackler": {"enabled": True, "preset": "heavy_groove_wear"},
         "deverb": {"enabled": True, "preset": "subtle_clarity_air_keeper"},
@@ -1108,7 +1308,7 @@ GLOBAL_CHAIN_PRESETS: Dict[str, Dict[str, Any]] = {
     },
     "cinema_dialogue_adr": {
         "name": "Cinema Dialogue & On-Location Boom",
-        "isolation_threshold": 0.95,
+        "denoiser": {"enabled": True, "preset": "on_location_generator", "threshold": 0.95},
         "declicker": {"enabled": True, "preset": "boom_pole_handling"},
         "decrackler": {"enabled": True, "preset": "silk_cotton_rustle"},
         "deverb": {"enabled": True, "preset": "high_ceiling_warehouse"},
@@ -1116,7 +1316,7 @@ GLOBAL_CHAIN_PRESETS: Dict[str, Dict[str, Any]] = {
     },
     "broadcast_newsroom": {
         "name": "Broadcast Newsroom & Live Stream",
-        "isolation_threshold": 0.88,
+        "denoiser": {"enabled": True, "preset": "city_traffic_rumble", "threshold": 0.88},
         "declicker": {"enabled": True, "preset": "wireless_rf_burst_clicks"},
         "decrackler": {"enabled": True, "preset": "wireless_rf_static"},
         "deverb": {"enabled": True, "preset": "glass_boardroom_echo"},
@@ -1127,11 +1327,12 @@ GLOBAL_CHAIN_PRESETS: Dict[str, Dict[str, Any]] = {
 
 class DenoxMasteringProcessor:
     """Runs the complete mastering chain:
-    Thresholding -> De-Clicker -> De-Crackler -> De-Verb -> De-Esser.
+    De-Noiser -> De-Clicker -> De-Crackler -> De-Verb -> De-Esser.
     """
 
     def __init__(self, sample_rate: int = 48000):
         self.sample_rate = sample_rate
+        self.denoiser = DeNoiser(sample_rate)
         self.declicker = DeClicker(sample_rate)
         self.decrackler = DeCrackler(sample_rate)
         self.deverb = DeVerb(sample_rate)
@@ -1143,16 +1344,18 @@ class DenoxMasteringProcessor:
         isolated_vocal: np.ndarray,
         config: DenoxMasteringChainConfig
     ) -> Tuple[np.ndarray, np.ndarray, Dict[str, Any]]:
-        """Processes the neural vocal through thresholding and all DSP modules."""
-        vocal = apply_isolation_threshold(
+        """Processes the audio through the De-Noiser and all DSP modules."""
+        # Step 1: De-Noiser (Neural Background Noise Separation & Thresholding)
+        vocal, denoise_stats = self.denoiser.process(
             original_audio,
             isolated_vocal,
-            threshold=config.isolation_threshold,
-            mode=config.threshold_mode
+            config.denoiser
         )
 
         stats: Dict[str, Any] = {
-            "threshold_applied": config.isolation_threshold,
+            "threshold_applied": config.denoiser.threshold,
+            "denoiser_applied": config.denoiser.enabled,
+            "denoiser_mode": denoise_stats.get("mode", "spectral_gate"),
             "clicks_repaired": 0,
             "crackle_events": 0,
             "decrackler_applied": config.decrackler.enabled,

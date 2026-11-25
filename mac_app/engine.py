@@ -153,10 +153,24 @@ def build_dsp_config(dsp_params: Optional[Dict[str, Any]] = None) -> dsp_module.
     if not dsp_params:
         return cfg
 
-    if "isolation_threshold" in dsp_params:
-        cfg.isolation_threshold = float(dsp_params["isolation_threshold"])
+    # De-Noiser
+    dn = dsp_params.get("denoiser")
+    if dn and isinstance(dn, dict):
+        cfg.denoiser.enabled = bool(dn.get("enabled", True))
+        if "threshold" in dn:
+            cfg.denoiser.threshold = float(dn["threshold"])
+        elif "isolation_threshold" in dn:
+            cfg.denoiser.threshold = float(dn["isolation_threshold"])
+        if "mode" in dn:
+            cfg.denoiser.mode = str(dn["mode"])
+        if "reduction_db" in dn:
+            cfg.denoiser.reduction_db = float(dn["reduction_db"])
+        if "ambient_bleed" in dn:
+            cfg.denoiser.ambient_bleed = float(dn["ambient_bleed"])
+    elif "isolation_threshold" in dsp_params:
+        cfg.denoiser.threshold = float(dsp_params["isolation_threshold"])
     elif "threshold" in dsp_params:
-        cfg.isolation_threshold = float(dsp_params["threshold"])
+        cfg.denoiser.threshold = float(dsp_params["threshold"])
 
     # De-Clicker
     dc = dsp_params.get("declicker")
