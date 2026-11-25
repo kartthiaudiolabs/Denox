@@ -319,32 +319,6 @@ body {
   font-family: var(--font-lcd);
 }
 
-.presets-bar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: 12px;
-  flex-wrap: wrap;
-}
-
-.preset-chip {
-  background: #27292f;
-  border: 1px solid var(--border-main);
-  padding: 4px 10px;
-  border-radius: 12px;
-  font-size: 11px;
-  font-family: var(--font-ui);
-  font-weight: 500;
-  color: var(--text-secondary);
-  cursor: pointer;
-  transition: all 0.15s;
-}
-
-.preset-chip:hover {
-  background: #33363e;
-  border-color: var(--logic-blue);
-  color: #ffffff;
-}
 
 /* ==========================================================================
    LOGIC PRO HARDWARE CONTROLS & SELECTORS

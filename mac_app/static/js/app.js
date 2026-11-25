@@ -57,30 +57,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  // --- PRESETS / SAMPLES ---
-  async function loadPresetSamples() {
-    try {
-      const res = await fetch('/api/samples');
-      const data = await res.json();
-      const container = document.getElementById('presets-list');
-      if (!container) return;
-      container.innerHTML = '';
-
-      data.samples.slice(0, 8).forEach(sample => {
-        const chip = document.createElement('div');
-        chip.className = 'preset-chip';
-        chip.innerText = sample.name;
-        chip.addEventListener('click', () => {
-          setSelectedFile(sample.path, sample.name);
-        });
-        container.appendChild(chip);
-      });
-    } catch (e) {
-      console.warn("Failed to load sample presets:", e);
-    }
-  }
-  loadPresetSamples();
-
   // --- FILE SELECTION & UPLOAD ---
   let selectedFilePath = null;
   const dropzone = document.getElementById('offline-dropzone');
