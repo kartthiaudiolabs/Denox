@@ -287,7 +287,24 @@ document.addEventListener('DOMContentLoaded', () => {
       const p = dspPresetsCache.global_presets[key];
 
       // Update Sub-modules
-      if (p.denoiser) applyModulePreset('denoiser', p.denoiser.preset, p.denoiser.enabled);
+      if (p.denoiser) {
+        applyModulePreset('denoiser', p.denoiser.preset, p.denoiser.enabled);
+        if (p.denoiser.threshold !== undefined) {
+          dspState.denoiser.threshold = p.denoiser.threshold;
+          dspState.threshold = p.denoiser.threshold;
+          const tSlider = document.getElementById('slider-isolation-threshold');
+          if (tSlider) tSlider.value = Math.round(p.denoiser.threshold * 100);
+          const dThresh = document.getElementById('disp-dn-thresh');
+          if (dThresh) dThresh.innerText = `${Math.round(p.denoiser.threshold * 100)}%`;
+          if (thresholdDisplay) {
+            const val = Math.round(p.denoiser.threshold * 100);
+            thresholdDisplay.innerText = `${val}%`;
+          }
+          if (typeof auditionManager !== 'undefined') {
+            auditionManager.notifyParamChange('denoiser');
+          }
+        }
+      }
       if (p.declicker) applyModulePreset('declicker', p.declicker.preset, p.declicker.enabled);
       if (p.decrackler) applyModulePreset('decrackler', p.decrackler.preset, p.decrackler.enabled);
       if (p.deverb) applyModulePreset('deverb', p.deverb.preset, p.deverb.enabled);

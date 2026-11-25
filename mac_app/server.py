@@ -2,11 +2,13 @@
 """FastAPI server for the DENOX Mac application."""
 
 import base64
+import json
 import logging
 import os
 import pathlib
 import shutil
 import subprocess
+import sys
 import tempfile
 import time
 from typing import Any, Dict, List, Optional
@@ -310,12 +312,14 @@ async def run_doctor():
     try:
         # Run doctor in subprocess to capture exact text
         proc = subprocess.run(
-            [sys.executable, "-m", "inworld.voice_isolation.doctor", "--json"],
+            [sys.executable, "-m", "inworld.voice_isolation.doctor"],
             capture_output=True,
             text=True,
             check=False
         )
         output = proc.stdout.strip()
+        if not output and proc.stderr:
+            output = proc.stderr.strip()
         return {"status": "success", "output": output}
     except Exception as e:
         logger.exception("Doctor check failed")

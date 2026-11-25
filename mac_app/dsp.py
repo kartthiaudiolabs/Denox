@@ -1266,61 +1266,204 @@ class DenoxMasteringChainConfig:
 
 
 GLOBAL_CHAIN_PRESETS: Dict[str, Dict[str, Any]] = {
+    # =========================================================================
+    # CATEGORY 1: PODCAST, VOICEOVER & AUDIOBOOK
+    # =========================================================================
     "ultra_clean_podcast": {
         "name": "Ultra-Clean Podcast (Max Clarity)",
+        "category": "Podcast, Voiceover & Audiobook",
         "denoiser": {"enabled": True, "preset": "pure_isolated_vocal", "threshold": 0.95},
         "declicker": {"enabled": True, "preset": "mouth_saliva_tame"},
         "decrackler": {"enabled": True, "preset": "silk_cotton_rustle"},
         "deverb": {"enabled": True, "preset": "tight_vocal_booth"},
         "deesser": {"enabled": True, "preset": "podcast_proximity_sibilance"}
     },
-    "studio_vocal_booth": {
-        "name": "Studio Vocal Booth Master",
-        "denoiser": {"enabled": True, "preset": "pure_isolated_vocal", "threshold": 1.00},
-        "declicker": {"enabled": True, "preset": "lead_vocal_transparent"},
-        "decrackler": {"enabled": False, "preset": "condenser_moisture_sputter"},
-        "deverb": {"enabled": True, "preset": "tight_vocal_booth"},
-        "deesser": {"enabled": True, "preset": "broadcast_smooth_warmth"}
-    },
-    "natural_warmth": {
-        "name": "Natural Warmth (Retain Room Air)",
+    "audiobook_intimate_narration": {
+        "name": "Audiobook Intimate Narration",
+        "category": "Podcast, Voiceover & Audiobook",
         "denoiser": {"enabled": True, "preset": "whisper_room_air", "threshold": 0.70},
-        "declicker": {"enabled": True, "preset": "mouth_saliva_tame"},
-        "decrackler": {"enabled": False, "preset": "vinyl_surface_gentle"},
-        "deverb": {"enabled": False, "preset": "subtle_clarity_air_keeper"},
+        "declicker": {"enabled": True, "preset": "whisper_lip_stick"},
+        "decrackler": {"enabled": False, "preset": "condenser_moisture_sputter"},
+        "deverb": {"enabled": True, "preset": "untreated_bedroom_drywall"},
         "deesser": {"enabled": True, "preset": "audiobook_gentle_tamer"}
     },
-    "heavy_room_killer": {
-        "name": "Echo & Cavern Eliminator",
+    "commercial_voiceover_punch": {
+        "name": "Commercial Voiceover Punch",
+        "category": "Podcast, Voiceover & Audiobook",
         "denoiser": {"enabled": True, "preset": "pure_isolated_vocal", "threshold": 1.00},
+        "declicker": {"enabled": True, "preset": "close_condenser_clicks"},
+        "decrackler": {"enabled": False, "preset": "collar_tie_brush"},
+        "deverb": {"enabled": True, "preset": "tight_vocal_booth"},
+        "deesser": {"enabled": True, "preset": "commercial_voiceover_punch"}
+    },
+    "two_host_podcast_roundtable": {
+        "name": "Multi-Mic Roundtable & Cross-Bleed",
+        "category": "Podcast, Voiceover & Audiobook",
+        "denoiser": {"enabled": True, "preset": "podcast_hvac_tame", "threshold": 0.88},
+        "declicker": {"enabled": True, "preset": "dry_mouth_smacks"},
+        "decrackler": {"enabled": True, "preset": "chest_strap_rub"},
+        "deverb": {"enabled": True, "preset": "hardwood_floor_dampener"},
+        "deesser": {"enabled": True, "preset": "radio_host_crisp_body"}
+    },
+
+    # =========================================================================
+    # CATEGORY 2: BROADCAST, TV & STREAMING
+    # =========================================================================
+    "broadcast_newsroom_master": {
+        "name": "Broadcast Newsroom & Live Stream",
+        "category": "Broadcast, TV & Streaming",
+        "denoiser": {"enabled": True, "preset": "city_traffic_rumble", "threshold": 0.88},
         "declicker": {"enabled": True, "preset": "digital_buffer_clicks"},
         "decrackler": {"enabled": True, "preset": "wireless_rf_static"},
-        "deverb": {"enabled": True, "preset": "concrete_stairwell_ring"},
+        "deverb": {"enabled": True, "preset": "glass_boardroom_echo"},
+        "deesser": {"enabled": True, "preset": "broadcast_smooth_warmth"}
+    },
+    "live_sports_stadium_isolate": {
+        "name": "Live Sports Commentary & Stadium Noise",
+        "category": "Broadcast, TV & Streaming",
+        "denoiser": {"enabled": True, "preset": "cafeteria_crowd_babble", "threshold": 0.96},
+        "declicker": {"enabled": True, "preset": "wireless_rf_burst_clicks"},
+        "decrackler": {"enabled": True, "preset": "am_radio_atmospheric"},
+        "deverb": {"enabled": True, "preset": "auditorium_podium_tail"},
         "deesser": {"enabled": True, "preset": "shouted_dialogue_crunch"}
     },
-    "vintage_vinyl_restoration": {
-        "name": "Vintage Vinyl & Archival Restoration",
-        "denoiser": {"enabled": True, "preset": "vintage_radio_static_floor", "threshold": 0.80},
-        "declicker": {"enabled": True, "preset": "vinyl_33rpm_dust_ticks"},
-        "decrackler": {"enabled": True, "preset": "heavy_groove_wear"},
-        "deverb": {"enabled": True, "preset": "subtle_clarity_air_keeper"},
-        "deesser": {"enabled": False, "preset": "broadcast_smooth_warmth"}
+    "field_reporter_wind_traffic": {
+        "name": "Field Reporter & Severe Weather",
+        "category": "Broadcast, TV & Streaming",
+        "denoiser": {"enabled": True, "preset": "outdoor_wind_buffet", "threshold": 0.95},
+        "declicker": {"enabled": True, "preset": "plosive_edge_clicks"},
+        "decrackler": {"enabled": True, "preset": "heavy_coat_friction"},
+        "deverb": {"enabled": True, "preset": "subway_platform_tunnel"},
+        "deesser": {"enabled": True, "preset": "adr_boom_dialogue_match"}
     },
+    "corporate_conference_hall": {
+        "name": "Corporate Townhall & Conference Echo",
+        "category": "Broadcast, TV & Streaming",
+        "denoiser": {"enabled": True, "preset": "pc_fan_laptop_whine", "threshold": 0.85},
+        "declicker": {"enabled": True, "preset": "bluetooth_packet_ticks"},
+        "decrackler": {"enabled": True, "preset": "ground_loop_sputter"},
+        "deverb": {"enabled": True, "preset": "lecture_hall_decay"},
+        "deesser": {"enabled": True, "preset": "dental_palatal_consonants"}
+    },
+
+    # =========================================================================
+    # CATEGORY 3: FILM, CINEMA & ADR DIALOGUE
+    # =========================================================================
     "cinema_dialogue_adr": {
-        "name": "Cinema Dialogue & On-Location Boom",
+        "name": "Cinema Dialogue & Location Boom",
+        "category": "Film, Cinema & ADR Dialogue",
         "denoiser": {"enabled": True, "preset": "on_location_generator", "threshold": 0.95},
         "declicker": {"enabled": True, "preset": "boom_pole_handling"},
         "decrackler": {"enabled": True, "preset": "silk_cotton_rustle"},
         "deverb": {"enabled": True, "preset": "high_ceiling_warehouse"},
         "deesser": {"enabled": True, "preset": "adr_boom_dialogue_match"}
     },
-    "broadcast_newsroom": {
-        "name": "Broadcast Newsroom & Live Stream",
-        "denoiser": {"enabled": True, "preset": "city_traffic_rumble", "threshold": 0.88},
-        "declicker": {"enabled": True, "preset": "wireless_rf_burst_clicks"},
-        "decrackler": {"enabled": True, "preset": "wireless_rf_static"},
-        "deverb": {"enabled": True, "preset": "glass_boardroom_echo"},
-        "deesser": {"enabled": True, "preset": "commercial_voiceover_punch"}
+    "car_interior_dialogue_clean": {
+        "name": "Car Interior Road & Cabin Noise",
+        "category": "Film, Cinema & ADR Dialogue",
+        "denoiser": {"enabled": True, "preset": "city_traffic_rumble", "threshold": 0.92},
+        "declicker": {"enabled": True, "preset": "foley_impact_soften"},
+        "decrackler": {"enabled": True, "preset": "collar_tie_brush"},
+        "deverb": {"enabled": True, "preset": "car_interior_boxiness"},
+        "deesser": {"enabled": True, "preset": "bright_condenser_c9_tame"}
+    },
+    "whispered_cinema_intimate": {
+        "name": "Whispered Dialogue & Foley Air",
+        "category": "Film, Cinema & ADR Dialogue",
+        "denoiser": {"enabled": True, "preset": "whisper_room_air", "threshold": 0.65},
+        "declicker": {"enabled": True, "preset": "whisper_lip_stick"},
+        "decrackler": {"enabled": False, "preset": "condenser_moisture_sputter"},
+        "deverb": {"enabled": True, "preset": "subtle_clarity_air_keeper"},
+        "deesser": {"enabled": True, "preset": "whispered_dialogue_presence"}
+    },
+    "heavy_room_killer": {
+        "name": "Echo & Concrete Cavern Eliminator",
+        "category": "Film, Cinema & ADR Dialogue",
+        "denoiser": {"enabled": True, "preset": "pure_isolated_vocal", "threshold": 1.00},
+        "declicker": {"enabled": True, "preset": "switch_relay_pops"},
+        "decrackler": {"enabled": True, "preset": "scratchy_fader_pot"},
+        "deverb": {"enabled": True, "preset": "concrete_stairwell_ring"},
+        "deesser": {"enabled": True, "preset": "surgical_notch_q28"}
+    },
+
+    # =========================================================================
+    # CATEGORY 4: MUSIC PRODUCTION & LEAD VOCALS
+    # =========================================================================
+    "studio_vocal_booth": {
+        "name": "Studio Vocal Booth Master (Mix Ready)",
+        "category": "Music Production & Lead Vocals",
+        "denoiser": {"enabled": True, "preset": "pure_isolated_vocal", "threshold": 1.00},
+        "declicker": {"enabled": True, "preset": "lead_vocal_transparent"},
+        "decrackler": {"enabled": False, "preset": "condenser_moisture_sputter"},
+        "deverb": {"enabled": True, "preset": "lead_vocal_dry_isolation"},
+        "deesser": {"enabled": True, "preset": "master_bus_high_clamp"}
+    },
+    "live_stage_vocal_drum_bleed": {
+        "name": "Live Concert Vocal & Drum Spill Kill",
+        "category": "Music Production & Lead Vocals",
+        "denoiser": {"enabled": True, "preset": "stage_drum_spill_bleed", "threshold": 0.98},
+        "declicker": {"enabled": True, "preset": "pop_filter_bypass"},
+        "decrackler": {"enabled": True, "preset": "tube_preamp_thermal_noise"},
+        "deverb": {"enabled": True, "preset": "cathedral_sanctuary_kill"},
+        "deesser": {"enabled": True, "preset": "aggressive_s_crush"}
+    },
+    "acoustic_singer_songwriter": {
+        "name": "Acoustic Singer-Songwriter Balance",
+        "category": "Music Production & Lead Vocals",
+        "denoiser": {"enabled": True, "preset": "acoustic_room_subtle_clean", "threshold": 0.75},
+        "declicker": {"enabled": True, "preset": "acoustic_fret_bleed"},
+        "decrackler": {"enabled": False, "preset": "ribbon_mic_air_crackle"},
+        "deverb": {"enabled": True, "preset": "spring_reverb_resonance"},
+        "deesser": {"enabled": True, "preset": "soprano_air_keeper"}
+    },
+    "backing_vocal_ensemble": {
+        "name": "Backing Vocal & Choral Group Polish",
+        "category": "Music Production & Lead Vocals",
+        "denoiser": {"enabled": True, "preset": "backing_vocal_bleed", "threshold": 0.90},
+        "declicker": {"enabled": True, "preset": "choir_group_mouth_noise"},
+        "decrackler": {"enabled": False, "preset": "condenser_moisture_sputter"},
+        "deverb": {"enabled": True, "preset": "plate_reverb_stripper"},
+        "deesser": {"enabled": True, "preset": "wideband_sibilance_duck"}
+    },
+
+    # =========================================================================
+    # CATEGORY 5: ARCHIVAL, VINYL & EXTREME RESTORATION
+    # =========================================================================
+    "vintage_vinyl_restoration": {
+        "name": "Vintage Vinyl & Archival 33/78 RPM",
+        "category": "Archival, Vinyl & Extreme Restoration",
+        "denoiser": {"enabled": True, "preset": "vintage_radio_static_floor", "threshold": 0.80},
+        "declicker": {"enabled": True, "preset": "vinyl_33rpm_dust_ticks"},
+        "decrackler": {"enabled": True, "preset": "heavy_groove_wear"},
+        "deverb": {"enabled": True, "preset": "subtle_clarity_air_keeper"},
+        "deesser": {"enabled": False, "preset": "broadcast_smooth_warmth"}
+    },
+    "cassette_tape_hiss_restore": {
+        "name": "Cassette & Reel-to-Reel Tape Hiss Restoration",
+        "category": "Archival, Vinyl & Extreme Restoration",
+        "denoiser": {"enabled": True, "preset": "analog_tape_hiss_wash", "threshold": 0.88},
+        "declicker": {"enabled": True, "preset": "tape_splice_pops"},
+        "decrackler": {"enabled": True, "preset": "phantom_power_residual"},
+        "deverb": {"enabled": False, "preset": "tight_vocal_booth"},
+        "deesser": {"enabled": True, "preset": "deep_voice_edge_clean"}
+    },
+    "optical_film_soundtrack_rescue": {
+        "name": "16mm/35mm Optical Film Soundtrack Rescue",
+        "category": "Archival, Vinyl & Extreme Restoration",
+        "denoiser": {"enabled": True, "preset": "industrial_plant_drone", "threshold": 0.92},
+        "declicker": {"enabled": True, "preset": "film_optical_track_pops"},
+        "decrackler": {"enabled": True, "preset": "nitrate_film_grain"},
+        "deverb": {"enabled": True, "preset": "tiled_bathroom_flutter"},
+        "deesser": {"enabled": True, "preset": "female_piercing_t_and_ch"}
+    },
+    "electrical_hum_buzz_eliminator": {
+        "name": "50Hz/60Hz Ground Loop & Severe Electrical Buzz",
+        "category": "Archival, Vinyl & Extreme Restoration",
+        "denoiser": {"enabled": True, "preset": "mains_hum_50_60hz", "threshold": 0.96},
+        "declicker": {"enabled": True, "preset": "switch_relay_pops"},
+        "decrackler": {"enabled": True, "preset": "ground_loop_sputter"},
+        "deverb": {"enabled": False, "preset": "tight_vocal_booth"},
+        "deesser": {"enabled": True, "preset": "baritone_whistle_dental"}
     }
 }
 
