@@ -69,25 +69,26 @@
 
     <!-- TAB 1: QUANTUM DECK (STUDIO ISOLATOR) -->
     <section class="tab-pane active" id="tab-quantum">
-      <div class="glass-panel">
+
+      <!-- [INDEPENDENT AUDIO INSERTION BOX] -->
+      <div class="glass-panel" id="panel-audio-insert" style="margin-bottom:16px;">
         <div class="panel-header">
           <div class="panel-title">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polygon points="10 8 16 12 10 16 10 8"></polygon></svg>
-            NEURAL DE-NOISER & VOCAL SEPARATION
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+            AUDIO INSERTION BOX // MASTER SOURCE INGESTION
           </div>
-          <div class="panel-subtitle" id="selected-file-label">Drag & drop or select an audio file</div>
+          <div class="panel-subtitle" id="selected-file-label">Drag & drop or select an audio file · Auto-applies 5-Module DSP Chain on insert</div>
         </div>
 
         <input type="file" id="offline-file-input" accept="audio/*" style="display:none;">
         <div class="dropzone-container" id="offline-dropzone">
           <div class="dropzone-icon">⏏</div>
           <div class="dropzone-text-primary">DRAG & DROP AUDIO FILE OR CLICK TO BROWSE</div>
-          <div class="dropzone-text-secondary">SUPPORTS WAV, MP3, FLAC, M4A, OGG · AUTOMATIC 48 kHz CONVERSION</div>
+          <div class="dropzone-text-secondary">SUPPORTS WAV, MP3, FLAC, M4A, OGG · AUTOMATIC 48 kHz CONVERSION · 5-MODULE PIPELINE AUTO-RUNS ON INSERT</div>
         </div>
 
-
         <!-- ENGINE CONTROLS -->
-        <div class="controls-grid">
+        <div class="controls-grid" style="margin-top:14px;">
           <div class="control-item">
             <label class="control-label">NEURAL CHECKPOINT</label>
             <select class="cyber-select" id="select-model">
@@ -113,28 +114,43 @@
             </select>
           </div>
         </div>
+      </div>
 
-        <!-- [MASTER MOD] DE-NOISER (NEURAL BACKGROUND NOISE SEPARATION & ISOLATION) -->
-        <div class="dsp-module-card module-active" id="card-module-denoiser" style="margin-bottom:18px; border-left:4px solid var(--logic-blue);">
-          <div class="dsp-module-titlebar" style="margin-bottom:12px;">
-            <div style="display:flex; align-items:center; gap:10px;">
-              <span class="hud-dot" style="background:var(--logic-blue); box-shadow:0 0 6px var(--logic-blue);"></span>
-              <span style="font-family:var(--font-ui); font-size:12px; font-weight:700; color:var(--logic-blue); letter-spacing:0.3px;">
-                [MASTER MOD] DE-NOISER (NEURAL BACKGROUND NOISE SEPARATION)
-              </span>
-            </div>
-            <div style="display:flex; align-items:center; gap:12px;">
-              <span id="threshold-val-display" style="font-family:var(--font-lcd); font-size:12px; font-weight:700; color:var(--logic-blue);">
-                100% (ZERO BACKGROUND NOISE)
+      <!-- [INDEPENDENT 5-MODULE DSP MASTERING SUITE] -->
+      <div class="glass-panel" id="panel-dsp-mastering" style="margin-bottom:16px;">
+        <div class="dsp-suite-header" style="margin-bottom:14px;">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span class="hud-dot" style="background:var(--logic-cyan); box-shadow:0 0 6px var(--logic-cyan);"></span>
+            <span class="panel-title" style="color:var(--logic-cyan); font-size:12px;">DENOX 5-MODULE MASTERING RACK (CHAIN: DE-NOISER → DE-CLICKER → DE-CRACKLER → DE-VERB → DE-ESSER)</span>
+          </div>
+          <div style="display:flex; align-items:center; gap:10px;">
+            <span style="font-family:var(--font-ui); font-size:10px; font-weight:600; color:var(--text-secondary);">GLOBAL PRESET:</span>
+            <select class="cyber-select" id="select-global-preset" style="padding:4px 8px; font-size:11px;">
+              <option value="custom">Custom Configuration</option>
+              <option value="ultra_clean_podcast">Ultra-Clean Podcast (Max Clarity)</option>
+              <option value="studio_vocal_booth">Studio Vocal Booth Master</option>
+              <option value="natural_warmth">Natural Warmth (Retain Room Air)</option>
+              <option value="heavy_room_killer">Echo & Cavern Eliminator</option>
+              <option value="vintage_vinyl_restoration">Vintage Vinyl & Archival Restoration</option>
+              <option value="cinema_dialogue_adr">Cinema Dialogue & On-Location Boom</option>
+              <option value="broadcast_newsroom">Broadcast Newsroom & Live Stream</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="dsp-modules-grid">
+          <!-- MODULE 1: DE-NOISER (BACKGROUND NOISE SEPARATION) -->
+          <div class="dsp-module-card module-active" id="card-module-denoiser">
+            <div class="dsp-module-titlebar">
+              <span style="font-family:var(--font-ui); font-size:11px; font-weight:700; color:var(--logic-blue);">
+                [MOD-01] DE-NOISER
               </span>
               <button class="dsp-toggle-btn active" id="btn-toggle-denoiser">ACTIVE</button>
             </div>
-          </div>
 
-          <div style="display:grid; grid-template-columns:minmax(280px, 1.2fr) minmax(280px, 1.8fr); gap:16px; align-items:end;">
-            <div class="slider-group" style="margin-bottom:0;">
-              <label class="control-label" style="font-size:10px;">DE-NOISER PRESET (20 MEDIA PRO PRESETS)</label>
-              <select class="cyber-select" id="preset-denoiser" style="padding:6px 10px; font-size:11px;">
+            <div class="slider-group">
+              <label class="control-label" style="font-size:10px;">PRESET (20 MEDIA PRO PRESETS)</label>
+              <select class="cyber-select" id="preset-denoiser" style="padding:4px 8px; font-size:11px; margin-bottom:8px;">
                 <optgroup label="Podcast & Studio Dialogue">
                   <option value="podcast_hvac_tame">Studio AC & HVAC Hum Reduction</option>
                   <option value="pc_fan_laptop_whine">Computer Fan & Laptop Coil Whine</option>
@@ -168,54 +184,31 @@
               </select>
             </div>
 
-            <div class="slider-group" style="margin-bottom:0;">
-              <div class="slider-header" style="margin-bottom:4px;">
-                <span>NOISE REDUCTION THRESHOLD (INTENSITY)</span>
-                <span id="disp-dn-thresh" style="font-family:var(--font-lcd); color:var(--logic-blue); font-weight:700;">100%</span>
+            <div class="slider-group">
+              <div class="slider-header">
+                <span>THRESHOLD (REDUCTION)</span>
+                <span id="disp-dn-thresh">100%</span>
               </div>
               <input type="range" id="slider-isolation-threshold" min="0" max="100" value="100" step="1" class="cyber-range">
-              <div style="display:flex; justify-content:space-between; font-family:var(--font-lcd); font-size:9px; color:var(--text-muted); margin-top:4px;">
-                <span>0% (RAW AUDIO)</span>
-                <span>25% (SUBTLE)</span>
-                <span>50% (NATURAL)</span>
-                <span>75% (WARM)</span>
-                <span>100% (ZERO NOISE)</span>
-              </div>
             </div>
-          </div>
-        </div>
 
-        <!-- DENOX NEURAL DSP MASTERING SUITE -->
-        <div class="dsp-suite-container">
-          <div class="dsp-suite-header">
-            <div style="display:flex; align-items:center; gap:8px;">
-              <span class="hud-dot" style="background:var(--logic-cyan); box-shadow:0 0 6px var(--logic-cyan);"></span>
-              <span class="panel-title" style="color:var(--logic-cyan); font-size:12px;">DENOX DSP MASTERING SUITE</span>
-            </div>
-            <div style="display:flex; align-items:center; gap:10px;">
-              <span style="font-family:var(--font-ui); font-size:10px; font-weight:600; color:var(--text-secondary);">GLOBAL PRESET:</span>
-              <select class="cyber-select" id="select-global-preset" style="padding:4px 8px; font-size:11px;">
-                <option value="custom">Custom Configuration</option>
-                <option value="ultra_clean_podcast">Ultra-Clean Podcast (Max Clarity)</option>
-                <option value="studio_vocal_booth">Studio Vocal Booth Master</option>
-                <option value="natural_warmth">Natural Warmth (Retain Room Air)</option>
-                <option value="heavy_room_killer">Echo & Cavern Eliminator</option>
-                <option value="vintage_vinyl_restoration">Vintage Vinyl & Archival Restoration</option>
-                <option value="cinema_dialogue_adr">Cinema Dialogue & On-Location Boom</option>
-                <option value="broadcast_newsroom">Broadcast Newsroom & Live Stream</option>
-              </select>
+            <div class="slider-group">
+              <div class="slider-header">
+                <span>AMBIENT BLEED (ROOM TONE)</span>
+                <span id="disp-dn-bleed">0%</span>
+              </div>
+              <input type="range" id="slider-dn-bleed" min="0" max="30" value="0" step="1" class="cyber-range">
             </div>
           </div>
 
-          <div class="dsp-modules-grid">
-            <!-- MODULE 1: DE-CLICKER (IMPULSE & MOUTH NOISE) -->
-            <div class="dsp-module-card module-active" id="card-module-declicker">
-              <div class="dsp-module-titlebar">
-                <span style="font-family:var(--font-ui); font-size:11px; font-weight:700; color:var(--logic-blue);">
-                  [MOD-01] DE-CLICKER
-                </span>
-                <button class="dsp-toggle-btn active" id="btn-toggle-declicker">ACTIVE</button>
-              </div>
+          <!-- MODULE 2: DE-CLICKER (IMPULSE & MOUTH NOISE) -->
+          <div class="dsp-module-card module-active" id="card-module-declicker">
+            <div class="dsp-module-titlebar">
+              <span style="font-family:var(--font-ui); font-size:11px; font-weight:700; color:var(--logic-blue);">
+                [MOD-02] DE-CLICKER
+              </span>
+              <button class="dsp-toggle-btn active" id="btn-toggle-declicker">ACTIVE</button>
+            </div>
 
               <div class="slider-group">
                 <label class="control-label" style="font-size:10px;">PRESET (20 MEDIA PRO PRESETS)</label>
@@ -270,11 +263,11 @@
               </div>
             </div>
 
-            <!-- MODULE 2: DE-CRACKLER (SURFACE & GRANULAR NOISE) -->
+            <!-- MODULE 3: DE-CRACKLER (SURFACE & GRANULAR NOISE) -->
             <div class="dsp-module-card module-active" id="card-module-decrackler">
               <div class="dsp-module-titlebar">
                 <span style="font-family:var(--font-ui); font-size:11px; font-weight:700; color:var(--logic-amber);">
-                  [MOD-02] DE-CRACKLER
+                  [MOD-03] DE-CRACKLER
                 </span>
                 <button class="dsp-toggle-btn active" id="btn-toggle-decrackler">ACTIVE</button>
               </div>
@@ -332,11 +325,11 @@
               </div>
             </div>
 
-            <!-- MODULE 3: DE-VERB (DEREVERBERATION) -->
+            <!-- MODULE 4: DE-VERB (DEREVERBERATION) -->
             <div class="dsp-module-card module-active" id="card-module-deverb">
               <div class="dsp-module-titlebar">
                 <span style="font-family:var(--font-ui); font-size:11px; font-weight:700; color:var(--logic-cyan);">
-                  [MOD-03] DE-VERB (ACOUSTICS)
+                  [MOD-04] DE-VERB (ACOUSTICS)
                 </span>
                 <button class="dsp-toggle-btn active" id="btn-toggle-deverb">ACTIVE</button>
               </div>
@@ -394,11 +387,11 @@
               </div>
             </div>
 
-            <!-- MODULE 4: DE-ESSER (HARSH SIBILANCE) -->
+            <!-- MODULE 5: DE-ESSER (HARSH SIBILANCE) -->
             <div class="dsp-module-card module-active" id="card-module-deesser">
               <div class="dsp-module-titlebar">
                 <span style="font-family:var(--font-ui); font-size:11px; font-weight:700; color:var(--logic-purple);">
-                  [MOD-04] DE-ESSER (HARSH 'S')
+                  [MOD-05] DE-ESSER (HARSH 'S')
                 </span>
                 <button class="dsp-toggle-btn active" id="btn-toggle-deesser">ACTIVE</button>
               </div>
@@ -459,22 +452,30 @@
         </div>
 
         <button class="btn-cyber-primary" id="btn-run-isolation" disabled>
-          INITIATE NEURAL ISOLATION & DSP CHAIN
+          INITIATE 5-MODULE DSP CHAIN
         </button>
 
         <!-- PROGRESS HUD -->
         <div class="progress-hud" id="progress-hud">
           <div class="hud-telemetry-row">
             <span>NEURAL ENHANCER CORE: BUSY</span>
-            <span id="hud-stats-text">Processing audio through Metal GPU tensor cores...</span>
+            <span id="hud-stats-text">Processing audio through Metal GPU tensor cores & 5-Module DSP Chain...</span>
           </div>
           <div class="cyber-progress-track">
             <div class="cyber-progress-bar" id="cyber-progress-bar"></div>
           </div>
         </div>
+      </div>
 
-        <!-- MULTI-TRACK STEMS DECK -->
-        <div class="stems-deck-container" id="stems-container" style="display:none;">
+      <!-- [MULTI-TRACK STEMS & REMASTERING DECK] -->
+      <div class="glass-panel stems-deck-container" id="stems-container" style="display:none; margin-bottom:16px;">
+        <div class="panel-header" style="margin-bottom:12px;">
+          <div class="panel-title" style="color:var(--logic-blue);">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5v14M7 8v8M22 10v4M2 10v4"></path></svg>
+            MULTI-TRACK MASTER STEMS & REMASTERING DECK
+          </div>
+          <div class="panel-subtitle">Independent Solo / Mute, Waveform Scrubbing & 32-bit Floating Export</div>
+        </div>
 
           <!-- CHANNEL 1: ORIGINAL MIX -->
           <div class="stem-card" id="card-original">
@@ -526,7 +527,7 @@
 
           <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; margin-top:12px;">
             <button class="btn-cyber-primary" id="btn-reapply-dsp" style="width:auto; padding:10px 20px; font-size:12px; background:linear-gradient(135deg, rgba(157, 0, 255, 0.8), rgba(0, 240, 255, 0.8));">
-              ⚡ RE-APPLY THRESHOLD & DSP CHAIN (< 0.2s)
+              ⚡ RE-APPLY 5-MODULE DSP CHAIN (< 0.2s)
             </button>
             <button class="btn-icon" id="btn-reveal-stems">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>

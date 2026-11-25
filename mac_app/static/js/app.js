@@ -66,13 +66,19 @@ document.addEventListener('DOMContentLoaded', () => {
   const fileInput = document.getElementById('offline-file-input');
   const selectedFileLabel = document.getElementById('selected-file-label');
 
-  function setSelectedFile(path, filename) {
+  function setSelectedFile(path, filename, autoRun = false) {
     selectedFilePath = path;
     if (selectedFileLabel) {
-      selectedFileLabel.innerHTML = `<strong>TARGET FILE:</strong> <span style="color:var(--logic-blue); font-weight:600;">${filename}</span>`;
+      selectedFileLabel.innerHTML = `<strong>TARGET FILE:</strong> <span style="color:var(--logic-blue); font-weight:600;">${filename}</span>` + 
+        (autoRun ? ` · <span style="color:var(--logic-cyan); font-weight:600;">APPLYING 5-MODULE DSP CHAIN...</span>` : ``);
     }
     const runBtn = document.getElementById('btn-run-isolation');
-    if (runBtn) runBtn.disabled = false;
+    if (runBtn) {
+      runBtn.disabled = false;
+      if (autoRun) {
+        setTimeout(() => runBtn.click(), 50);
+      }
+    }
   }
 
   if (dropzone) {
@@ -103,11 +109,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const formData = new FormData();
     formData.append('file', file);
     try {
-      if (selectedFileLabel) selectedFileLabel.innerText = `Uploading ${file.name}...`;
+      if (selectedFileLabel) selectedFileLabel.innerHTML = `<strong>INSERTING:</strong> <span style="color:var(--logic-amber); font-weight:600;">${file.name}</span>...`;
       const res = await fetch('/api/upload', { method: 'POST', body: formData });
       const data = await res.json();
       if (data.status === 'success') {
-        setSelectedFile(data.file_path, data.filename);
+        setSelectedFile(data.file_path, data.filename, true);
       }
     } catch (e) {
       alert("Failed to upload audio file: " + e.message);
@@ -254,6 +260,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  wireSlider('slider-dn-bleed', 'disp-dn-bleed', v => dspState.denoiser.ambient_bleed = v / 100.0, v => `${Math.round(v)}%`);
   wireSlider('slider-dc-sens', 'disp-dc-sens', v => dspState.declicker.sensitivity = v / 100.0);
   wireSlider('slider-dc-width', 'disp-dc-width', v => dspState.declicker.click_width_samples = Math.round(v), v => `${Math.round(v)} smp`);
   wireSlider('slider-dcr-sens', 'disp-dcr-sens', v => dspState.decrackler.sensitivity = v / 100.0);
@@ -311,6 +318,10 @@ document.addEventListener('DOMContentLoaded', () => {
       if (tSlider) tSlider.value = Math.round(p.threshold * 100);
       const dThresh = document.getElementById('disp-dn-thresh');
       if (dThresh) dThresh.innerText = `${Math.round(p.threshold * 100)}%`;
+      const bSlider = document.getElementById('slider-dn-bleed');
+      if (bSlider) bSlider.value = Math.round((p.ambient_bleed || 0.0) * 100);
+      const dBleed = document.getElementById('disp-dn-bleed');
+      if (dBleed) dBleed.innerText = `${Math.round((p.ambient_bleed || 0.0) * 100)}%`;
       if (thresholdDisplay) {
         let desc = "ZERO BACKGROUND NOISE";
         const val = Math.round(p.threshold * 100);
@@ -394,7 +405,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!selectedFilePath) return;
 
       runBtn.disabled = true;
-      runBtn.innerHTML = `NEURAL INFERENCE & DSP MASTERING ACTIVE...`;
+      runBtn.innerHTML = `5-MODULE INFERENCE & DSP MASTERING ACTIVE...`;
       if (progressHud) progressHud.style.display = 'block';
       if (progressBar) progressBar.style.width = '30%';
 
@@ -445,7 +456,7 @@ document.addEventListener('DOMContentLoaded', () => {
         alert("Isolation Error: " + err.message);
       } finally {
         runBtn.disabled = false;
-        runBtn.innerHTML = `INITIATE NEURAL ISOLATION & DSP CHAIN`;
+        runBtn.innerHTML = `INITIATE 5-MODULE DSP CHAIN`;
         setTimeout(() => {
           if (progressHud) progressHud.style.display = 'none';
           if (progressBar) progressBar.style.width = '0%';
@@ -464,7 +475,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       btnReapply.disabled = true;
-      btnReapply.innerText = "⚡ COMPUTING DSP CHAIN...";
+      btnReapply.innerText = "⚡ COMPUTING 5-MODULE CHAIN...";
 
       try {
         const res = await fetch('/api/remaster', {
@@ -502,13 +513,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
         btnReapply.innerText = `✓ RE-MASTERED (${data.dsp_stats.clicks_repaired} clicks, ${data.dsp_stats.crackle_events || 0} crackle events)`;
         setTimeout(() => {
-          btnReapply.innerText = "⚡ RE-APPLY THRESHOLD & DSP CHAIN (< 0.2s)";
+          btnReapply.innerText = "⚡ RE-APPLY 5-MODULE DSP CHAIN (< 0.2s)";
           btnReapply.disabled = false;
         }, 1800);
       } catch (err) {
         alert("DSP Re-master Error: " + err.message);
         btnReapply.disabled = false;
-        btnReapply.innerText = "⚡ RE-APPLY THRESHOLD & DSP CHAIN (< 0.2s)";
+        btnReapply.innerText = "⚡ RE-APPLY 5-MODULE DSP CHAIN (< 0.2s)";
       }
     };
   }
@@ -776,7 +787,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const path = await window.pywebview.api.select_file();
         if (path) {
           const name = path.split('/').pop();
-          setSelectedFile(path, name);
+          setSelectedFile(path, name, true);
         }
       } else {
         fileInput && fileInput.click();
