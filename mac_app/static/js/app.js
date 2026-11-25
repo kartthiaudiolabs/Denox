@@ -1,5 +1,5 @@
 // Copyright 2026 Inworld AI & Antigravity
-// Neo-Isolator Application Controller
+// DENOX Application Controller
 
 document.addEventListener('DOMContentLoaded', () => {
   const deck = new StemsAudioDeck();

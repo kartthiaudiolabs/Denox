@@ -33,7 +33,7 @@ except ImportError:
 logger = logging.getLogger("mac_app.engine")
 
 SAMPLE_RATE = 48000
-TMP_DIR = pathlib.Path(tempfile.gettempdir()) / "neo_voice_isolator"
+TMP_DIR = pathlib.Path(tempfile.gettempdir()) / "denox_audio"
 TMP_DIR.mkdir(parents=True, exist_ok=True)
 
 

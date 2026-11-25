@@ -1,5 +1,5 @@
 # Copyright 2026 Inworld AI & Antigravity
-"""FastAPI server for the Voice Isolator Mac application."""
+"""FastAPI server for the DENOX Mac application."""
 
 import base64
 import logging
@@ -26,7 +26,7 @@ STATIC_DIR = BASE_DIR / "static"
 REPO_ROOT = BASE_DIR.parent.resolve()
 EXAMPLES_DIR = REPO_ROOT / "demo" / "examples"
 
-app = FastAPI(title="NEO-ISOLATOR // Quantum Audio Studio", version="1.0.0")
+app = FastAPI(title="DENOX // Quantum Audio Studio", version="1.0.0")
 
 app.add_middleware(
     CORSMiddleware,

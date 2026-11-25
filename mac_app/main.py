@@ -1,5 +1,5 @@
 # Copyright 2026 Inworld AI & Antigravity
-"""Main entry point for the Inworld Neo-Isolator Mac Application."""
+"""Main entry point for the DENOX Mac Application."""
 
 import argparse
 import logging

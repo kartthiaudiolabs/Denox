@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# Inworld Neo-Isolator Mac App Launcher
+# DENOX Mac App Launcher
 
 DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$DIR" || exit 1
 
 echo "=========================================================="
-echo "  INWORLD NEO-ISOLATOR // QUANTUM AUDIO STUDIO (macOS)   "
+echo "      DENOX // QUANTUM AUDIO STUDIO (macOS)              "
 echo "  Apple Metal GPU (MPS) Acceleration · 48 kHz Master Clock"
 echo "=========================================================="
 
