@@ -166,10 +166,23 @@ def build_dsp_config(dsp_params: Optional[Dict[str, Any]] = None) -> dsp_module.
             cfg.declicker.sensitivity = float(dc["sensitivity"])
         if "click_width_samples" in dc:
             cfg.declicker.click_width_samples = int(dc["click_width_samples"])
-        if "decrackle_amount" in dc:
-            cfg.declicker.decrackle_amount = float(dc["decrackle_amount"])
         if "mode" in dc:
             cfg.declicker.mode = str(dc["mode"])
+
+    # De-Crackler
+    dcr = dsp_params.get("decrackler")
+    if dcr and isinstance(dcr, dict):
+        cfg.decrackler.enabled = bool(dcr.get("enabled", True))
+        if "sensitivity" in dcr:
+            cfg.decrackler.sensitivity = float(dcr["sensitivity"])
+        if "crackle_reduction" in dcr:
+            cfg.decrackler.crackle_reduction = float(dcr["crackle_reduction"])
+        elif "reduction" in dcr:
+            cfg.decrackler.crackle_reduction = float(dcr["reduction"])
+        if "frequency_band" in dcr:
+            cfg.decrackler.frequency_band = str(dcr["frequency_band"])
+        if "density" in dcr:
+            cfg.decrackler.density = float(dcr["density"])
 
     # De-Verb
     dv = dsp_params.get("deverb")

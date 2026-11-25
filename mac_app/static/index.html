@@ -154,28 +154,56 @@
                 <option value="studio_vocal_booth">Studio Vocal Booth Master</option>
                 <option value="natural_warmth">Natural Warmth (Retain Room Air)</option>
                 <option value="heavy_room_killer">Echo & Cavern Eliminator</option>
-                <option value="vintage_restoration">Vintage Vinyl & Crackle Restoration</option>
+                <option value="vintage_vinyl_restoration">Vintage Vinyl & Archival Restoration</option>
+                <option value="cinema_dialogue_adr">Cinema Dialogue & On-Location Boom</option>
+                <option value="broadcast_newsroom">Broadcast Newsroom & Live Stream</option>
               </select>
             </div>
           </div>
 
           <div class="dsp-modules-grid">
-            <!-- MODULE 1: DE-CLICKER & DE-CRACKLER -->
+            <!-- MODULE 1: DE-CLICKER (IMPULSE & MOUTH NOISE) -->
             <div class="dsp-module-card module-active" id="card-module-declicker">
               <div class="dsp-module-titlebar">
                 <span style="font-family:var(--font-ui); font-size:11px; font-weight:700; color:var(--logic-blue);">
-                  [MOD-01] DE-CLICKER & CRACKLE
+                  [MOD-01] DE-CLICKER
                 </span>
                 <button class="dsp-toggle-btn active" id="btn-toggle-declicker">ACTIVE</button>
               </div>
 
               <div class="slider-group">
-                <label class="control-label" style="font-size:10px;">PRESET</label>
+                <label class="control-label" style="font-size:10px;">PRESET (20 MEDIA PRO PRESETS)</label>
                 <select class="cyber-select" id="preset-declicker" style="padding:4px 8px; font-size:11px; margin-bottom:8px;">
-                  <option value="mouth_clicks" selected>Mouth & Saliva Clicks</option>
-                  <option value="digital_artifacts">Digital Dropouts & Buffer Clicks</option>
-                  <option value="vinyl_crackle">Vinyl & Dense Crackle</option>
-                  <option value="subtle_transparent">Subtle Transparent Polish</option>
+                  <optgroup label="Podcast & Voiceover">
+                    <option value="mouth_saliva_tame" selected>Mouth & Saliva Clicks</option>
+                    <option value="dry_mouth_smacks">Dry Mouth & Tongue Smacks</option>
+                    <option value="close_condenser_clicks">Close Condenser Proximity Clicks</option>
+                    <option value="whisper_lip_stick">Whisper & Intimate Lip Stick</option>
+                  </optgroup>
+                  <optgroup label="Broadcast & Live Stream">
+                    <option value="digital_buffer_clicks">Digital Clock Jitter & Dropouts</option>
+                    <option value="wireless_rf_burst_clicks">Wireless Mic Frequency Pops</option>
+                    <option value="bluetooth_packet_ticks">Bluetooth Audio Packet Ticks</option>
+                    <option value="plosive_edge_clicks">Plosive & Air Blast Edge Clicks</option>
+                  </optgroup>
+                  <optgroup label="Cinema & Foley">
+                    <option value="boom_pole_handling">Boom Pole Tap & Cable Clicks</option>
+                    <option value="foley_impact_soften">Foley Sharp Mechanical Clicks</option>
+                    <option value="props_cutlery_tame">Props Cutlery & Glass Clinks</option>
+                    <option value="switch_relay_pops">Electrical Switch & Relay Pops</option>
+                  </optgroup>
+                  <optgroup label="Music & Studio Vocals">
+                    <option value="lead_vocal_transparent">Lead Vocal Transparent Clean</option>
+                    <option value="pop_filter_bypass">Pop Filter Strike Clicks</option>
+                    <option value="acoustic_fret_bleed">Acoustic Guitar Fret Bleed Clicks</option>
+                    <option value="choir_group_mouth_noise">Choral & Group Mouth Clicks</option>
+                  </optgroup>
+                  <optgroup label="Archival & Restoration">
+                    <option value="shellac_78rpm_ticks">78 RPM Shellac Needle Clicks</option>
+                    <option value="vinyl_33rpm_dust_ticks">33 RPM Vinyl Dust Ticks</option>
+                    <option value="tape_splice_pops">Tape Splice & Head Pops</option>
+                    <option value="film_optical_track_pops">35mm Optical Film Sound Pops</option>
+                  </optgroup>
                 </select>
               </div>
 
@@ -189,29 +217,117 @@
 
               <div class="slider-group">
                 <div class="slider-header">
-                  <span>DE-CRACKLE INTENSITY</span>
-                  <span id="disp-dc-crackle">40%</span>
+                  <span>CLICK WIDTH</span>
+                  <span id="disp-dc-width">18 smp</span>
                 </div>
-                <input type="range" id="slider-dc-crackle" min="0" max="100" value="40" class="cyber-range">
+                <input type="range" id="slider-dc-width" min="4" max="64" value="18" class="cyber-range">
               </div>
             </div>
 
-            <!-- MODULE 2: DE-VERB (DEREVERBERATION) -->
-            <div class="dsp-module-card module-active" id="card-module-deverb">
+            <!-- MODULE 2: DE-CRACKLER (SURFACE & GRANULAR NOISE) -->
+            <div class="dsp-module-card module-active" id="card-module-decrackler">
               <div class="dsp-module-titlebar">
                 <span style="font-family:var(--font-ui); font-size:11px; font-weight:700; color:var(--logic-amber);">
-                  [MOD-02] DE-VERB (ACOUSTICS)
+                  [MOD-02] DE-CRACKLER
+                </span>
+                <button class="dsp-toggle-btn active" id="btn-toggle-decrackler">ACTIVE</button>
+              </div>
+
+              <div class="slider-group">
+                <label class="control-label" style="font-size:10px;">PRESET (20 MEDIA PRO PRESETS)</label>
+                <select class="cyber-select" id="preset-decrackler" style="padding:4px 8px; font-size:11px; margin-bottom:8px;">
+                  <optgroup label="Vinyl & Phonograph Restoration">
+                    <option value="vinyl_surface_gentle" selected>Vinyl Surface Dust (Gentle)</option>
+                    <option value="heavy_groove_wear">Heavy 33 RPM Groove Wear</option>
+                    <option value="shellac_crackle_dense">78 RPM Shellac Dense Crackle</option>
+                    <option value="acetate_transcription_crackle">Acetate & Lacquer Disc Crackle</option>
+                  </optgroup>
+                  <optgroup label="Film & Optical Soundtrack">
+                    <option value="nitrate_film_grain">16mm/35mm Nitrate Optical Track</option>
+                    <option value="celluloid_scratch_continuous">Celluloid Scratch Continuous Noise</option>
+                    <option value="projector_lamp_pickup">Projector Optical Pickup Buzz</option>
+                    <option value="vintage_newsreel_wash">Vintage Newsreel Crackle Wash</option>
+                  </optgroup>
+                  <optgroup label="Wardrobe & Lavalier Friction">
+                    <option value="silk_cotton_rustle">Silk & Cotton Shirt Rustle</option>
+                    <option value="heavy_coat_friction">Heavy Coat & Wool Friction Crackle</option>
+                    <option value="chest_strap_rub">Chest Strap & Mic Clip Rubbing</option>
+                    <option value="collar_tie_brush">Tie & Collar Constant Bristle</option>
+                  </optgroup>
+                  <optgroup label="Broadcast & RF Telemetry">
+                    <option value="wireless_rf_static">Wireless RF Static Fringe</option>
+                    <option value="scratchy_fader_pot">Scratchy Fader & Potentiometer</option>
+                    <option value="ground_loop_sputter">Ground Buzz High-Freq Sputter</option>
+                    <option value="am_radio_atmospheric">AM Radio Atmospheric Static</option>
+                  </optgroup>
+                  <optgroup label="Studio & Microphones">
+                    <option value="condenser_moisture_sputter">Condenser Capsule Moisture Crackle</option>
+                    <option value="tube_preamp_thermal_noise">Tube Preamp Thermal Sputter</option>
+                    <option value="phantom_power_residual">Phantom Power Residual Sputter</option>
+                    <option value="ribbon_mic_air_crackle">Ribbon Mic Air Crackle</option>
+                  </optgroup>
+                </select>
+              </div>
+
+              <div class="slider-group">
+                <div class="slider-header">
+                  <span>SENSITIVITY</span>
+                  <span id="disp-dcr-sens">70%</span>
+                </div>
+                <input type="range" id="slider-dcr-sens" min="0" max="100" value="70" class="cyber-range">
+              </div>
+
+              <div class="slider-group">
+                <div class="slider-header">
+                  <span>CRACKLE REDUCTION</span>
+                  <span id="disp-dcr-reduc">65%</span>
+                </div>
+                <input type="range" id="slider-dcr-reduc" min="0" max="100" value="65" class="cyber-range">
+              </div>
+            </div>
+
+            <!-- MODULE 3: DE-VERB (DEREVERBERATION) -->
+            <div class="dsp-module-card module-active" id="card-module-deverb">
+              <div class="dsp-module-titlebar">
+                <span style="font-family:var(--font-ui); font-size:11px; font-weight:700; color:var(--logic-cyan);">
+                  [MOD-03] DE-VERB (ACOUSTICS)
                 </span>
                 <button class="dsp-toggle-btn active" id="btn-toggle-deverb">ACTIVE</button>
               </div>
 
               <div class="slider-group">
-                <label class="control-label" style="font-size:10px;">ROOM PRESET</label>
+                <label class="control-label" style="font-size:10px;">PRESET (20 MEDIA PRO PRESETS)</label>
                 <select class="cyber-select" id="preset-deverb" style="padding:4px 8px; font-size:11px; margin-bottom:8px;">
-                  <option value="tight_booth" selected>Treated Vocal Booth</option>
-                  <option value="bedroom_studio">Dry Bedroom Studio</option>
-                  <option value="hall_echo_kill">Cavern & Echo Suppressor</option>
-                  <option value="subtle_clarity">Subtle Room Tame</option>
+                  <optgroup label="Podcast & Home Studio">
+                    <option value="tight_vocal_booth" selected>Treated Vocal Booth (Zero Echo)</option>
+                    <option value="untreated_bedroom_drywall">Untreated Drywall & Ceiling Tame</option>
+                    <option value="hardwood_floor_dampener">Hardwood Floor Reflection Dampener</option>
+                    <option value="glass_window_slapback">Glass Window & Monitor Slapback</option>
+                  </optgroup>
+                  <optgroup label="Film & Location Sound">
+                    <option value="concrete_basement_cavern">Concrete Basement & Garage Reverb</option>
+                    <option value="high_ceiling_warehouse">High Ceiling Warehouse & Loft</option>
+                    <option value="concrete_stairwell_ring">Concrete Stairwell Heavy Ring</option>
+                    <option value="car_interior_boxiness">Car Cabin Boxy Resonance</option>
+                  </optgroup>
+                  <optgroup label="Broadcast & Corporate">
+                    <option value="glass_boardroom_echo">Glass Boardroom Conference Echo</option>
+                    <option value="open_office_ceiling_bounce">Open Office Ceiling Bounce</option>
+                    <option value="lecture_hall_decay">University Lecture Hall Decay</option>
+                    <option value="auditorium_podium_tail">Auditorium Podium Long Tail</option>
+                  </optgroup>
+                  <optgroup label="Music & Lead Vocals">
+                    <option value="lead_vocal_dry_isolation">Dry Vocal Isolation (Mix Ready)</option>
+                    <option value="over_reverberated_stem_rescue">Over-Reverberated Vocal Rescue</option>
+                    <option value="plate_reverb_stripper">Plate Reverb Tail Tamer</option>
+                    <option value="spring_reverb_resonance">Spring Reverb Ring Suppressor</option>
+                  </optgroup>
+                  <optgroup label="Specialized & Extreme">
+                    <option value="cathedral_sanctuary_kill">Cathedral Sanctuary Massive Tail</option>
+                    <option value="tiled_bathroom_flutter">Tiled Bathroom Fast Flutter</option>
+                    <option value="subway_platform_tunnel">Subway Platform & Tunnel Echo</option>
+                    <option value="subtle_clarity_air_keeper">Subtle Acoustic Air Keeper</option>
+                  </optgroup>
                 </select>
               </div>
 
@@ -232,22 +348,48 @@
               </div>
             </div>
 
-            <!-- MODULE 3: DE-ESSER (SIBILANCE) -->
+            <!-- MODULE 4: DE-ESSER (HARSH SIBILANCE) -->
             <div class="dsp-module-card module-active" id="card-module-deesser">
               <div class="dsp-module-titlebar">
-                <span style="font-family:var(--font-ui); font-size:11px; font-weight:700; color:var(--logic-cyan);">
-                  [MOD-03] DE-ESSER (HARSH 'S')
+                <span style="font-family:var(--font-ui); font-size:11px; font-weight:700; color:var(--logic-purple);">
+                  [MOD-04] DE-ESSER (HARSH 'S')
                 </span>
                 <button class="dsp-toggle-btn active" id="btn-toggle-deesser">ACTIVE</button>
               </div>
 
               <div class="slider-group">
-                <label class="control-label" style="font-size:10px;">VOCAL PROFILE</label>
+                <label class="control-label" style="font-size:10px;">PRESET (20 MEDIA PRO PRESETS)</label>
                 <select class="cyber-select" id="preset-deesser" style="padding:4px 8px; font-size:11px; margin-bottom:8px;">
-                  <option value="smooth_broadcast" selected>Broadcast Warmth</option>
-                  <option value="harsh_s_tamer">Harsh 'S' Piercing Tamer</option>
-                  <option value="male_dialogue">Male Dialogue (Lower S)</option>
-                  <option value="female_vocal_airy">Female Vocal (High S / T)</option>
+                  <optgroup label="Broadcast & Voiceover">
+                    <option value="broadcast_smooth_warmth" selected>Broadcast Warmth (Classic Radio)</option>
+                    <option value="podcast_proximity_sibilance">Podcast Proximity Sibilance</option>
+                    <option value="audiobook_gentle_tamer">Audiobook Long-Form Gentle Tamer</option>
+                    <option value="commercial_voiceover_punch">Punchy Commercial Voiceover</option>
+                  </optgroup>
+                  <optgroup label="Female Vocals & Airy Dialogue">
+                    <option value="female_high_sibilance_8k">Female High Sibilance (7.5 - 9 kHz)</option>
+                    <option value="female_piercing_t_and_ch">Female Piercing 'T' & 'CH' Softener</option>
+                    <option value="soprano_air_keeper">Soprano Air Keeper (Narrow S-Kill)</option>
+                    <option value="bright_condenser_c9_tame">Bright Condenser Mic Peak Tamer</option>
+                  </optgroup>
+                  <optgroup label="Male Dialogue & Low Sibilance">
+                    <option value="male_dialogue_5k">Male Dialogue Lower S (5.0 - 6.2 kHz)</option>
+                    <option value="baritone_whistle_dental">Baritone Whistle & Dental Air</option>
+                    <option value="deep_voice_edge_clean">Deep Voice Edge & Bite Reduction</option>
+                    <option value="radio_host_crisp_body">Radio Host Crisp Body & S Control</option>
+                  </optgroup>
+                  <optgroup label="Cinema & ADR">
+                    <option value="adr_boom_dialogue_match">ADR Boom Match (Natural Consonants)</option>
+                    <option value="shouted_dialogue_crunch">Shouted & Screamed Sibilant Crunch</option>
+                    <option value="whispered_dialogue_presence">Whispered Consonant Presence</option>
+                    <option value="dental_palatal_consonants">Sharp Dental & Palatal Consonants</option>
+                  </optgroup>
+                  <optgroup label="Mix Mastering & Aggressive">
+                    <option value="master_bus_high_clamp">Master Bus High-Band Peak Clamp</option>
+                    <option value="aggressive_s_crush">Aggressive S-Crush (-30 dB)</option>
+                    <option value="wideband_sibilance_duck">Wideband Sibilance Ducking</option>
+                    <option value="surgical_notch_q28">Transparent Surgical Notch (Q=2.8)</option>
+                  </optgroup>
                 </select>
               </div>
 

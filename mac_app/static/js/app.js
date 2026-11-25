@@ -116,15 +116,22 @@ document.addEventListener('DOMContentLoaded', () => {
     threshold: 1.0,
     declicker: {
       enabled: true,
-      preset: 'mouth_clicks',
+      preset: 'mouth_saliva_tame',
       sensitivity: 0.75,
       click_width_samples: 18,
-      decrackle_amount: 0.40,
       mode: 'mouth_clicks'
+    },
+    decrackler: {
+      enabled: true,
+      preset: 'vinyl_surface_gentle',
+      sensitivity: 0.70,
+      crackle_reduction: 0.65,
+      frequency_band: 'high_frequency',
+      density: 0.60
     },
     deverb: {
       enabled: true,
-      preset: 'tight_booth',
+      preset: 'tight_vocal_booth',
       reduction_amount: 0.85,
       room_size: 'small',
       preserve_early_reflections: 0.40,
@@ -132,7 +139,7 @@ document.addEventListener('DOMContentLoaded', () => {
     },
     deesser: {
       enabled: true,
-      preset: 'smooth_broadcast',
+      preset: 'broadcast_smooth_warmth',
       threshold_db: -22.0,
       reduction_amount: 0.65,
       frequency_focus_hz: 6500.0,
@@ -146,10 +153,43 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       const res = await fetch('/api/dsp/presets');
       dspPresetsCache = await res.json();
+      populateModuleDropdowns(dspPresetsCache);
     } catch (e) {
       console.warn("Failed to fetch DSP presets:", e);
     }
   }
+
+  function populateModuleDropdowns(cache) {
+    if (!cache) return;
+    const modules = ['declicker', 'decrackler', 'deverb', 'deesser'];
+    modules.forEach(modKey => {
+      const select = document.getElementById(`preset-${modKey}`);
+      const presetsMap = cache[`${modKey}_presets`];
+      if (!select || !presetsMap) return;
+
+      const categories = {};
+      Object.entries(presetsMap).forEach(([key, item]) => {
+        const cat = item.category || 'General';
+        if (!categories[cat]) categories[cat] = [];
+        categories[cat].push({ key, ...item });
+      });
+
+      select.innerHTML = '';
+      Object.entries(categories).forEach(([catName, items]) => {
+        const group = document.createElement('optgroup');
+        group.label = catName;
+        items.forEach(it => {
+          const opt = document.createElement('option');
+          opt.value = it.key;
+          opt.innerText = it.label || it.key;
+          if (it.key === dspState[modKey].preset) opt.selected = true;
+          group.appendChild(opt);
+        });
+        select.appendChild(group);
+      });
+    });
+  }
+
   loadDspPresets();
 
   // Threshold Slider
@@ -183,6 +223,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
   }
   setupModuleToggle('btn-toggle-declicker', 'card-module-declicker', 'declicker');
+  setupModuleToggle('btn-toggle-decrackler', 'card-module-decrackler', 'decrackler');
   setupModuleToggle('btn-toggle-deverb', 'card-module-deverb', 'deverb');
   setupModuleToggle('btn-toggle-deesser', 'card-module-deesser', 'deesser');
 
@@ -199,7 +240,9 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   wireSlider('slider-dc-sens', 'disp-dc-sens', v => dspState.declicker.sensitivity = v / 100.0);
-  wireSlider('slider-dc-crackle', 'disp-dc-crackle', v => dspState.declicker.decrackle_amount = v / 100.0);
+  wireSlider('slider-dc-width', 'disp-dc-width', v => dspState.declicker.click_width_samples = Math.round(v), v => `${Math.round(v)} smp`);
+  wireSlider('slider-dcr-sens', 'disp-dcr-sens', v => dspState.decrackler.sensitivity = v / 100.0);
+  wireSlider('slider-dcr-reduc', 'disp-dcr-reduc', v => dspState.decrackler.crackle_reduction = v / 100.0);
   wireSlider('slider-dv-reduc', 'disp-dv-reduc', v => dspState.deverb.reduction_amount = v / 100.0);
   wireSlider('slider-dv-early', 'disp-dv-early', v => dspState.deverb.preserve_early_reflections = v / 100.0);
   wireSlider('slider-de-reduc', 'disp-de-reduc', v => dspState.deesser.reduction_amount = v / 100.0);
@@ -222,6 +265,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       // Update Sub-modules
       if (p.declicker) applyModulePreset('declicker', p.declicker.preset, p.declicker.enabled);
+      if (p.decrackler) applyModulePreset('decrackler', p.decrackler.preset, p.decrackler.enabled);
       if (p.deverb) applyModulePreset('deverb', p.deverb.preset, p.deverb.enabled);
       if (p.deesser) applyModulePreset('deesser', p.deesser.preset, p.deesser.enabled);
     };
@@ -238,6 +282,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const presetSelect = document.getElementById(`preset-${modKey}`);
 
     dspState[modKey].enabled = enabled;
+    dspState[modKey].preset = presetKey;
     if (toggleBtn) {
       toggleBtn.classList.toggle('active', enabled);
       toggleBtn.innerText = enabled ? "ACTIVE" : "BYPASSED";
@@ -250,40 +295,61 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (modKey === 'declicker') {
       dspState.declicker.sensitivity = p.sensitivity;
-      dspState.declicker.decrackle_amount = p.decrackle_amount;
       dspState.declicker.click_width_samples = p.click_width_samples;
       dspState.declicker.mode = p.mode;
       const s1 = document.getElementById('slider-dc-sens');
-      const s2 = document.getElementById('slider-dc-crackle');
+      const s2 = document.getElementById('slider-dc-width');
       if (s1) s1.value = Math.round(p.sensitivity * 100);
-      if (s2) s2.value = Math.round(p.decrackle_amount * 100);
-      document.getElementById('disp-dc-sens').innerText = `${Math.round(p.sensitivity * 100)}%`;
-      document.getElementById('disp-dc-crackle').innerText = `${Math.round(p.decrackle_amount * 100)}%`;
+      if (s2) s2.value = p.click_width_samples;
+      const d1 = document.getElementById('disp-dc-sens');
+      const d2 = document.getElementById('disp-dc-width');
+      if (d1) d1.innerText = `${Math.round(p.sensitivity * 100)}%`;
+      if (d2) d2.innerText = `${p.click_width_samples} smp`;
+    } else if (modKey === 'decrackler') {
+      dspState.decrackler.sensitivity = p.sensitivity;
+      dspState.decrackler.crackle_reduction = p.crackle_reduction;
+      dspState.decrackler.frequency_band = p.frequency_band;
+      dspState.decrackler.density = p.density;
+      const s1 = document.getElementById('slider-dcr-sens');
+      const s2 = document.getElementById('slider-dcr-reduc');
+      if (s1) s1.value = Math.round(p.sensitivity * 100);
+      if (s2) s2.value = Math.round(p.crackle_reduction * 100);
+      const d1 = document.getElementById('disp-dcr-sens');
+      const d2 = document.getElementById('disp-dcr-reduc');
+      if (d1) d1.innerText = `${Math.round(p.sensitivity * 100)}%`;
+      if (d2) d2.innerText = `${Math.round(p.crackle_reduction * 100)}%`;
     } else if (modKey === 'deverb') {
       dspState.deverb.reduction_amount = p.reduction_amount;
       dspState.deverb.room_size = p.room_size;
       dspState.deverb.preserve_early_reflections = p.preserve_early_reflections;
+      dspState.deverb.spectral_floor_db = p.spectral_floor_db;
       const s1 = document.getElementById('slider-dv-reduc');
       const s2 = document.getElementById('slider-dv-early');
       if (s1) s1.value = Math.round(p.reduction_amount * 100);
       if (s2) s2.value = Math.round(p.preserve_early_reflections * 100);
-      document.getElementById('disp-dv-reduc').innerText = `${Math.round(p.reduction_amount * 100)}%`;
-      document.getElementById('disp-dv-early').innerText = `${Math.round(p.preserve_early_reflections * 100)}%`;
+      const d1 = document.getElementById('disp-dv-reduc');
+      const d2 = document.getElementById('disp-dv-early');
+      if (d1) d1.innerText = `${Math.round(p.reduction_amount * 100)}%`;
+      if (d2) d2.innerText = `${Math.round(p.preserve_early_reflections * 100)}%`;
     } else if (modKey === 'deesser') {
       dspState.deesser.reduction_amount = p.reduction_amount;
       dspState.deesser.frequency_focus_hz = p.frequency_focus_hz;
       dspState.deesser.threshold_db = p.threshold_db;
+      dspState.deesser.bandwidth_q = p.bandwidth_q;
+      dspState.deesser.mode = p.mode;
       const s1 = document.getElementById('slider-de-reduc');
       const s2 = document.getElementById('slider-de-freq');
       if (s1) s1.value = Math.round(p.reduction_amount * 100);
       if (s2) s2.value = p.frequency_focus_hz;
-      document.getElementById('disp-de-reduc').innerText = `${Math.round(p.reduction_amount * 100)}%`;
-      document.getElementById('disp-de-freq').innerText = `${(p.frequency_focus_hz/1000).toFixed(1)} kHz`;
+      const d1 = document.getElementById('disp-de-reduc');
+      const d2 = document.getElementById('disp-de-freq');
+      if (d1) d1.innerText = `${Math.round(p.reduction_amount * 100)}%`;
+      if (d2) d2.innerText = `${(p.frequency_focus_hz/1000).toFixed(1)} kHz`;
     }
   }
 
   // Individual Module Preset dropdown changes
-  ['declicker', 'deverb', 'deesser'].forEach(modKey => {
+  ['declicker', 'decrackler', 'deverb', 'deesser'].forEach(modKey => {
     const sel = document.getElementById(`preset-${modKey}`);
     if (sel) {
       sel.onchange = (e) => applyModulePreset(modKey, e.target.value, dspState[modKey].enabled);
@@ -336,7 +402,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (progressBar) progressBar.style.width = '100%';
         if (telemetryStats) {
-          telemetryStats.innerText = `${data.duration}s audio in ${data.elapsed}s · ${data.rtf}x RTF (Threshold: ${Math.round(dspState.threshold*100)}%, Clicks Repaired: ${data.dsp_stats?.clicks_repaired || 0})`;
+          telemetryStats.innerText = `${data.duration}s audio in ${data.elapsed}s · ${data.rtf}x RTF (Threshold: ${Math.round(dspState.threshold*100)}%, Clicks Repaired: ${data.dsp_stats?.clicks_repaired || 0}, Crackle Attenuated: ${data.dsp_stats?.crackle_events || 0})`;
         }
 
         // Render Stems into Deck
@@ -407,7 +473,7 @@ document.addEventListener('DOMContentLoaded', () => {
         currentStemData.waveforms.vocal = data.waveforms.vocal;
         currentStemData.waveforms.background = data.waveforms.background;
 
-        btnReapply.innerText = `✓ RE-MASTERED (Repaired ${data.dsp_stats.clicks_repaired} clicks)`;
+        btnReapply.innerText = `✓ RE-MASTERED (${data.dsp_stats.clicks_repaired} clicks, ${data.dsp_stats.crackle_events || 0} crackle events)`;
         setTimeout(() => {
           btnReapply.innerText = "⚡ RE-APPLY THRESHOLD & DSP CHAIN (< 0.2s)";
           btnReapply.disabled = false;
