@@ -177,6 +177,21 @@ DENOISER_PRESETS: Dict[str, Dict[str, Any]] = {
 }
 
 
+def true_peak_mastering_limiter(audio: np.ndarray, ceiling: float = 0.96) -> np.ndarray:
+    """Transparent soft-knee brickwall limiter to ensure 0 digital clipping and 0 rail-to-rail distortion."""
+    if len(audio) == 0:
+        return audio
+    peak = float(np.max(np.abs(audio)))
+    if peak <= ceiling:
+        return audio
+    threshold = ceiling * 0.85
+    excess = np.maximum(0.0, np.abs(audio) - threshold)
+    scale = max(ceiling - threshold, 1e-6)
+    compressed_excess = scale * np.tanh(excess / scale)
+    limited = np.sign(audio) * (np.minimum(np.abs(audio), threshold) + compressed_excess)
+    return np.clip(limited, -ceiling, ceiling)
+
+
 class DeNoiser:
     """Applies multi-mode neural background noise separation, thresholding, and room tone control."""
 
@@ -207,8 +222,9 @@ class DeNoiser:
         noise_residual = orig - iso
 
         if config.mode == "blend":
-            angle = threshold * (math.pi / 2.0)
-            out = math.cos(angle) * orig + math.sin(angle) * iso
+            # Coherent in-phase linear crossfade: guarantees unity gain (no +3dB equal-power constructive clipping)
+            out = (1.0 - threshold) * orig + threshold * iso
+            out = true_peak_mastering_limiter(out, ceiling=0.96)
             return np.ascontiguousarray(out, dtype=np.float32), {"threshold": threshold, "mode": "blend"}
 
         # Ephraim-Malah Decision-Directed Wiener Masking with High-Frequency Consonant Preservation
@@ -511,7 +527,9 @@ DECLICKER_PRESETS: Dict[str, Dict[str, Any]] = {
 
 
 def _solve_ar_lpc(x: np.ndarray, order: int = 16) -> Optional[np.ndarray]:
-    """Computes autoregressive linear prediction coefficients via autocorrelation & Levinson-Durbin."""
+    """Computes autoregressive linear prediction coefficients via autocorrelation & Levinson-Durbin
+    with pole-radius bandwidth expansion to guarantee strict asymptotic filter stability (|z| <= 0.93).
+    """
     if len(x) <= order:
         return None
     r = np.correlate(x, x, mode='full')
@@ -526,17 +544,25 @@ def _solve_ar_lpc(x: np.ndarray, order: int = 16) -> Optional[np.ndarray]:
     alpha = 1.0
 
     for i in range(1, order + 1):
-        k = -np.sum(a[:i] * r[i:0:-1]) / alpha
+        # Bound reflection coefficient to strictly inside the unit circle
+        k = -np.sum(a[:i] * r[i:0:-1]) / max(alpha, 1e-12)
+        k = np.clip(k, -0.985, 0.985)
         a[1:i + 1] = a[1:i + 1] + k * a[i - 1::-1]
         alpha *= (1.0 - k * k)
-        if alpha < 1e-12:
+        if alpha < 1e-8:
             break
 
-    return a[1:]
+    # Bandwidth expansion: contract all AR polynomial roots radially by gamma
+    # Prevents any exponential resonance or rail-to-rail oscillation
+    gamma = 0.93
+    damping = np.power(gamma, np.arange(1, order + 1))
+    return a[1:] * damping
 
 
 def _ar_interpolate_click_gap(y: np.ndarray, start: int, end: int, order: int = 16) -> np.ndarray:
-    """Reconstructs click gap using joint forward-backward Autoregressive LPC prediction."""
+    """Reconstructs click gap using joint forward-backward Autoregressive LPC prediction
+    with monotonic PCHIP anchor blending and dynamic context envelope limiting.
+    """
     gap_len = end - start
     context_len = max(64, order * 4)
     n_samples = len(y)
@@ -544,40 +570,52 @@ def _ar_interpolate_click_gap(y: np.ndarray, start: int, end: int, order: int = 
     left_ctx = y[max(0, start - context_len):start]
     right_ctx = y[end:min(n_samples, end + context_len)]
 
+    # Compute surrounding amplitude ceiling to strictly prevent runaway divergence
+    max_left = np.max(np.abs(left_ctx[-order:])) if len(left_ctx) >= order else np.max(np.abs(left_ctx)) if len(left_ctx) > 0 else 0.05
+    max_right = np.max(np.abs(right_ctx[:order])) if len(right_ctx) >= order else np.max(np.abs(right_ctx)) if len(right_ctx) > 0 else 0.05
+    max_env = max(max_left, max_right, 1e-4) * 1.25
+
+    # Linear / monotonic boundary anchor
+    anchors_x = [start - 1, end]
+    anchors_y = [y[start - 1], y[end]]
+    anchor_interp = np.interp(np.arange(start, end), anchors_x, anchors_y)
+
     if len(left_ctx) < order * 2 or len(right_ctx) < order * 2:
-        # Fall back to boundary spline if context is too small
-        anchors_x = [start - 1, end]
-        anchors_y = [y[start - 1], y[end]]
-        return np.interp(np.arange(start, end), anchors_x, anchors_y)
+        return np.clip(anchor_interp, -max_env, max_env)
 
     a_left = _solve_ar_lpc(left_ctx, order)
     a_right = _solve_ar_lpc(right_ctx[::-1], order)
 
     if a_left is None or a_right is None:
-        anchors_x = [start - 1, end]
-        anchors_y = [y[start - 1], y[end]]
-        return np.interp(np.arange(start, end), anchors_x, anchors_y)
+        return np.clip(anchor_interp, -max_env, max_env)
 
-    # Forward prediction into gap
+    # Forward prediction into gap with envelope bounding
     pred_f = np.zeros(gap_len, dtype=np.float64)
     hist_f = list(left_ctx[-order:])
     for n in range(gap_len):
         val = -np.sum(a_left * np.array(hist_f[::-1]))
+        val = np.clip(val, -max_env, max_env)
         pred_f[n] = val
         hist_f.pop(0)
         hist_f.append(val)
 
-    # Backward prediction into gap
+    # Backward prediction into gap with envelope bounding
     pred_b = np.zeros(gap_len, dtype=np.float64)
     hist_b = list(right_ctx[:order])
     for n in range(gap_len):
         val = -np.sum(a_right * np.array(hist_b))
+        val = np.clip(val, -max_env, max_env)
         pred_b[n] = val
         hist_b.pop(0)
         hist_b.append(val)
 
+    # Crossfade forward and backward predictions
     weights = np.linspace(0.0, 1.0, gap_len)
-    return (1.0 - weights) * pred_f + weights * pred_b[::-1]
+    ar_pred = (1.0 - weights) * pred_f + weights * pred_b[::-1]
+
+    # Blend 85% stable AR harmonic prediction with 15% smooth boundary anchor
+    reconstructed = 0.85 * ar_pred + 0.15 * anchor_interp
+    return np.clip(reconstructed, -max_env, max_env)
 
 
 class DeClicker:
@@ -606,8 +644,8 @@ class DeClicker:
         local_energy = signal.convolve(diff ** 2, kernel, mode='same')
         local_rms = np.sqrt(np.maximum(local_energy, 1e-9))
 
-        # 3. Dynamic Thresholding based on sensitivity
-        threshold_factor = 7.5 - (config.sensitivity * 5.0)
+        # 3. Dynamic Thresholding: clamped lower bound preserves unvoiced speech consonants (/t/, /k/)
+        threshold_factor = max(3.5, 7.5 - (config.sensitivity * 4.2))
         click_mask = np.abs(diff) > (threshold_factor * local_rms)
 
         # 4. Repair clicks via Autoregressive Linear Prediction (Cedar/RX Model)
@@ -623,12 +661,13 @@ class DeClicker:
                 end = min(n_samples, idx + width // 2)
 
                 # Group adjacent click flags
-                while i + 1 < len(click_indices) and click_indices[i + 1] <= end + 4:
+                while i + 1 < len(click_indices) and click_indices[i + 1] <= end + 2:
                     i += 1
                     end = min(n_samples, click_indices[i] + width // 2)
 
                 gap_len = end - start
-                if 2 <= gap_len <= 128:
+                # Strict upper limit of 48 samples (~1ms) guarantees speech vowels are never erased
+                if 2 <= gap_len <= 48:
                     try:
                         y[start:end] = _ar_interpolate_click_gap(y, start, end, order=16)
                         repaired_count += 1
@@ -897,13 +936,16 @@ class DeCrackler:
         excess = np.maximum(0.0, abs_band - crackle_limit)
         events_attenuated = int(np.sum(crackle_flags & (excess > 0.0)))
 
-        # Soft-threshold shrinkage with hyperbolic tangent knee
+        # Continuous soft-knee shrinkage with hyperbolic tangent knee (avoids hard boolean step clicks)
         reduction_gain = config.crackle_reduction * (0.8 + 0.4 * config.density)
         reduction_gain = float(np.clip(reduction_gain, 0.0, 0.95))
 
-        # Attenuate detected impulsive crackle bursts while smoothly passing normal signal
-        suppression = np.sign(band) * excess * reduction_gain
-        clean_band = band - np.where(crackle_flags, suppression, suppression * 0.15)
+        excess_ratio = np.clip(excess / (crackle_limit + 1e-9), 0.0, 4.0)
+        soft_weight = np.tanh(excess_ratio) * reduction_gain
+        # Continuous kurtosis confidence weighting
+        kurt_weight = np.clip((kurt_band - dynamic_kurt_thresh) / 3.0, 0.0, 1.0)
+        total_suppression = np.maximum(soft_weight * 0.35, soft_weight * kurt_weight)
+        clean_band = band - (band * total_suppression)
         output = residual + clean_band
 
         stats = {
@@ -1472,7 +1514,7 @@ class DeEsser:
                 1.0 - config.reduction_amount * excess_ratio
             )
 
-        # 4. 3ms Lookahead Alignment (Pre-engages ducking so initial transient spikes never escape)
+        # 4. 3ms Lookahead Alignment & Ballistics Smoothing (Prevents audio-rate modulation crackle)
         lookahead_samples = int(0.003 * self.sample_rate)  # ~144 samples at 48kHz
         lookahead_gain = np.ones_like(raw_gain)
         if len(raw_gain) > lookahead_samples:
@@ -1482,12 +1524,25 @@ class DeEsser:
         else:
             lookahead_gain = raw_gain
 
+        # One-pole dynamic ballistics filter: 1.5ms attack / 25ms release
+        smooth_gain = np.ones_like(lookahead_gain)
+        att_alpha = math.exp(-1.0 / (0.0015 * self.sample_rate))
+        rel_alpha = math.exp(-1.0 / (0.025 * self.sample_rate))
+        curr_g = 1.0
+        for n in range(len(lookahead_gain)):
+            target_g = lookahead_gain[n]
+            if target_g < curr_g:
+                curr_g = att_alpha * curr_g + (1.0 - att_alpha) * target_g
+            else:
+                curr_g = rel_alpha * curr_g + (1.0 - rel_alpha) * target_g
+            smooth_gain[n] = curr_g
+
         # 5. Split-Band / Wideband Application
         if config.mode == "split_band":
             residual_speech = audio - sibilant_band
-            output = residual_speech + (sibilant_band * lookahead_gain)
+            output = residual_speech + (sibilant_band * smooth_gain)
         else:
-            output = audio * lookahead_gain
+            output = audio * smooth_gain
 
         return np.ascontiguousarray(output, dtype=np.float32)
 
@@ -1805,7 +1860,9 @@ class DenoxMasteringProcessor:
                 stats["executed_modules"].append("deesser")
 
         min_len = min(len(original_audio), len(current_audio))
-        vocal = current_audio[:min_len]
-        background = original_audio[:min_len] - vocal
+        # Studio True-Peak Limiter (-0.35 dBFS ceiling): eliminates digital 16-bit rail clipping
+        vocal = true_peak_mastering_limiter(current_audio[:min_len], ceiling=0.96)
+        raw_background = original_audio[:min_len] - vocal
+        background = true_peak_mastering_limiter(raw_background, ceiling=0.96)
 
         return vocal, background, stats

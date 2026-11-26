@@ -82,10 +82,19 @@ class DenoxLiveDspEngine {
       const AudioCtx = window.AudioContext || window.webkitAudioContext;
       this.ctx = new AudioCtx({ latencyHint: 'interactive' });
 
-      // Master output bus
+      // Master output bus with Studio Brickwall Limiter (-0.5 dBFS)
       this.masterGain = this.ctx.createGain();
       this.masterGain.gain.setValueAtTime(1.0, this.ctx.currentTime);
-      this.masterGain.connect(this.ctx.destination);
+
+      this.limiter = this.ctx.createDynamicsCompressor();
+      this.limiter.threshold.setValueAtTime(-0.5, this.ctx.currentTime);
+      this.limiter.knee.setValueAtTime(0, this.ctx.currentTime);
+      this.limiter.ratio.setValueAtTime(20, this.ctx.currentTime);
+      this.limiter.attack.setValueAtTime(0.001, this.ctx.currentTime);
+      this.limiter.release.setValueAtTime(0.020, this.ctx.currentTime);
+
+      this.masterGain.connect(this.limiter);
+      this.limiter.connect(this.ctx.destination);
 
       // A/B comparison crossfaders
       this.wetGain = this.ctx.createGain();
@@ -228,7 +237,7 @@ class DenoxLiveDspEngine {
 
     if (this.activeModule === 'declicker') {
       const sens = this.declicker.sensitivity;
-      const thresholdFactor = 7.5 - (sens * 5.2); // Lower factor = more sensitive impulse detection
+      const thresholdFactor = Math.max(3.5, 7.5 - (sens * 4.2));
       let p1 = this.declicker.prevSample1;
       let p2 = this.declicker.prevSample2;
       let rms = this.declicker.runningRms;
@@ -245,12 +254,11 @@ class DenoxLiveDspEngine {
         const isClick = diffAbs > (thresholdFactor * Math.max(rms, 0.005));
 
         if (isClick && sens > 0.05) {
-          // Autoregressive forward-backward linear predictive interpolation
-          const predFwd = (2.0 * p1) - p2;
           const next1 = (i + 1 < len) ? input[i + 1] : p1;
-          const next2 = (i + 2 < len) ? input[i + 2] : next1;
-          const predBwd = (2.0 * next1) - next2;
-          output[i] = 0.5 * predFwd + 0.5 * predBwd;
+          const maxEnv = Math.max(Math.abs(p1), Math.abs(next1), 0.005) * 1.25;
+          // Monotonic bounded interpolation: guarantees no runaway divergence
+          const interp = 0.5 * p1 + 0.5 * next1;
+          output[i] = Math.max(-maxEnv, Math.min(maxEnv, interp));
         } else {
           output[i] = x;
         }
@@ -282,7 +290,7 @@ class DenoxLiveDspEngine {
           const sign = x >= prev ? 1 : -1;
           const excess = delta - maxDelta;
           const shrinkFactor = 1.0 - (reduction * 0.85);
-          output[i] = prev + sign * (maxDelta + excess * shrinkFactor);
+          output[i] = Math.max(-1.0, Math.min(1.0, prev + sign * (maxDelta + excess * shrinkFactor)));
         } else {
           output[i] = x;
         }
