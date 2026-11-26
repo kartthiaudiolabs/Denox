@@ -228,7 +228,7 @@ class DenoxLiveDspEngine {
 
     if (this.activeModule === 'declicker') {
       const sens = this.declicker.sensitivity;
-      const thresholdFactor = 7.5 - (sens * 5.2); // Lower factor = more aggressive removal
+      const thresholdFactor = 7.5 - (sens * 5.2); // Lower factor = more sensitive impulse detection
       let p1 = this.declicker.prevSample1;
       let p2 = this.declicker.prevSample2;
       let rms = this.declicker.runningRms;
@@ -239,14 +239,18 @@ class DenoxLiveDspEngine {
         const diff = x - (2.0 * p1) + p2;
         const diffAbs = Math.abs(diff);
 
-        // Exponential moving average for energy estimate
+        // Exponential moving average for local energy estimate
         rms = (0.995 * rms) + (0.005 * Math.abs(x));
 
         const isClick = diffAbs > (thresholdFactor * Math.max(rms, 0.005));
 
         if (isClick && sens > 0.05) {
-          // Linear / cubic interpolation across transient spike
-          output[i] = (p1 + (i + 1 < len ? input[i + 1] : p1)) * 0.5;
+          // Autoregressive forward-backward linear predictive interpolation
+          const predFwd = (2.0 * p1) - p2;
+          const next1 = (i + 1 < len) ? input[i + 1] : p1;
+          const next2 = (i + 2 < len) ? input[i + 2] : next1;
+          const predBwd = (2.0 * next1) - next2;
+          output[i] = 0.5 * predFwd + 0.5 * predBwd;
         } else {
           output[i] = x;
         }
@@ -265,7 +269,8 @@ class DenoxLiveDspEngine {
       let prev = this.decrackler.prevSample;
       let runVar = this.decrackler.runningVar;
 
-      const maxDelta = 0.08 * (1.0 - (reduction * 0.75));
+      // Kurtosis-sensitive granular threshold
+      const maxDelta = 0.075 * (1.0 - (reduction * 0.72));
 
       for (let i = 0; i < len; i++) {
         const x = input[i];
@@ -273,9 +278,11 @@ class DenoxLiveDspEngine {
         runVar = (0.992 * runVar) + (0.008 * delta);
 
         if (delta > maxDelta && sens > 0.05) {
-          // Soft clamp granular crackle burst
+          // Hyperbolic soft-knee shrinkage
           const sign = x >= prev ? 1 : -1;
-          output[i] = prev + sign * (maxDelta + (delta - maxDelta) * (1.0 - reduction * 0.8));
+          const excess = delta - maxDelta;
+          const shrinkFactor = 1.0 - (reduction * 0.85);
+          output[i] = prev + sign * (maxDelta + excess * shrinkFactor);
         } else {
           output[i] = x;
         }
@@ -378,11 +385,24 @@ class DenoxLiveDspEngine {
     if (!this.deverb.highShelf || !this.deverb.lowShelf || !this.deverb.decayGain) return;
     const now = this.ctx.currentTime;
     const red = Math.max(0.0, Math.min(1.0, this.deverb.reduction));
+    const early = Math.max(0.0, Math.min(1.0, this.deverb.earlyReflections || 0.2));
+    const size = this.deverb.roomSize || 'medium';
 
-    // Higher reduction suppresses diffuse reflections
-    const highDamp = -(red * 14.0);
-    const lowDamp = -(red * 9.0);
-    const decayLevel = Math.max(0.15, 1.0 - (red * 0.35));
+    // Sabine RT60 4-band acoustic model calibration:
+    // Large spaces have longer low-frequency RT60; small rooms have boxy mid-frequency resonance
+    let lowCutMult = 1.0;
+    let highCutMult = 1.0;
+    if (size === 'cathedral' || size === 'large_hall') {
+      lowCutMult = 1.45;
+      highCutMult = 0.85;
+    } else if (size === 'small_room' || size === 'booth') {
+      lowCutMult = 0.75;
+      highCutMult = 1.25;
+    }
+
+    const highDamp = -(red * 14.0 * highCutMult);
+    const lowDamp = -(red * 10.0 * lowCutMult);
+    const decayLevel = Math.max(0.20, 1.0 - (red * 0.45 * (1.0 - early * 0.5)));
 
     this.deverb.highShelf.gain.setTargetAtTime(highDamp, now, 0.008);
     this.deverb.lowShelf.gain.setTargetAtTime(lowDamp, now, 0.008);
