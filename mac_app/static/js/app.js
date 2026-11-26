@@ -125,6 +125,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // --- DSP MASTERING SUITE & THRESHOLD STATE ---
   const dspState = {
     threshold: 1.0,
+    chain_order: ['denoiser', 'declicker', 'decrackler', 'deverb', 'deesser'],
     denoiser: {
       enabled: true,
       preset: 'pure_isolated_vocal',
@@ -233,6 +234,225 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  // ==========================================================================
+  // SIGNAL CHAIN ROUTING & DYNAMIC ALTERATION (LOGIC PRO 13 ARCHITECTURE)
+  // ==========================================================================
+  const MODULE_METADATA = {
+    denoiser: { name: 'DE-NOISER', color: 'var(--logic-blue)' },
+    declicker: { name: 'DE-CLICKER', color: 'var(--logic-blue)' },
+    decrackler: { name: 'DE-CRACKLER', color: 'var(--logic-amber)' },
+    deverb: { name: 'DE-VERB', color: 'var(--logic-cyan)' },
+    deesser: { name: 'DE-ESSER', color: 'var(--logic-purple)' }
+  };
+  const ALL_MODULES = ['denoiser', 'declicker', 'decrackler', 'deverb', 'deesser'];
+
+  function renderChainRouting() {
+    const flowContainer = document.getElementById('chain-path-flow');
+    const dropdown = document.getElementById('dropdown-add-module');
+    const grid = document.getElementById('dsp-modules-grid');
+
+    if (!flowContainer) return;
+    flowContainer.innerHTML = '';
+
+    // [IN] Node
+    const inChip = document.createElement('div');
+    inChip.className = 'chain-io-pill';
+    inChip.innerText = 'IN';
+    flowContainer.appendChild(inChip);
+
+    // Active Chain Modules
+    dspState.chain_order.forEach((modKey, idx) => {
+      // Flow Connector
+      const arrow = document.createElement('span');
+      arrow.className = 'chain-connector';
+      arrow.innerText = '──>';
+      flowContainer.appendChild(arrow);
+
+      const meta = MODULE_METADATA[modKey] || { name: modKey.toUpperCase(), color: '#fff' };
+      const isBypassed = !dspState[modKey]?.enabled;
+
+      const chip = document.createElement('div');
+      chip.className = `chain-node-chip ${isBypassed ? 'node-bypassed' : ''}`;
+      chip.title = `${meta.name} (Position #${idx + 1})${isBypassed ? ' [Bypassed]' : ''}`;
+
+      chip.innerHTML = `
+        <span class="chain-pos-badge" style="color:${meta.color};">#${idx + 1}</span>
+        <span style="color:${isBypassed ? 'var(--text-secondary)' : meta.color};">${meta.name}</span>
+        <button class="btn-node-shift" data-mod="${modKey}" data-dir="-1" title="Move earlier in chain" ${idx === 0 ? 'disabled' : ''}>◀</button>
+        <button class="btn-node-shift" data-mod="${modKey}" data-dir="1" title="Move later in chain" ${idx === dspState.chain_order.length - 1 ? 'disabled' : ''}>▶</button>
+        <button class="btn-node-remove" data-mod="${modKey}" title="Remove from chain">✕</button>
+      `;
+
+      // Event listeners for chip buttons
+      chip.querySelector('.btn-node-shift[data-dir="-1"]').onclick = (e) => {
+        e.stopPropagation();
+        shiftModuleInChain(modKey, -1);
+      };
+      chip.querySelector('.btn-node-shift[data-dir="1"]').onclick = (e) => {
+        e.stopPropagation();
+        shiftModuleInChain(modKey, 1);
+      };
+      chip.querySelector('.btn-node-remove').onclick = (e) => {
+        e.stopPropagation();
+        removeModuleFromChain(modKey);
+      };
+
+      flowContainer.appendChild(chip);
+    });
+
+    // [OUT] Node
+    const outArrow = document.createElement('span');
+    outArrow.className = 'chain-connector';
+    outArrow.innerText = '──>';
+    flowContainer.appendChild(outArrow);
+
+    const outChip = document.createElement('div');
+    outChip.className = 'chain-io-pill';
+    outChip.innerText = 'OUT';
+    flowContainer.appendChild(outChip);
+
+    // Update Add Module Dropdown Options
+    if (dropdown) {
+      dropdown.innerHTML = '';
+      const excludedModules = ALL_MODULES.filter(m => !dspState.chain_order.includes(m));
+      if (excludedModules.length === 0) {
+        dropdown.innerHTML = '<div style="padding:6px 12px; font-size:10px; color:var(--text-secondary);">All 5 modules active in chain</div>';
+      } else {
+        excludedModules.forEach(modKey => {
+          const meta = MODULE_METADATA[modKey];
+          const opt = document.createElement('div');
+          opt.className = 'add-module-option';
+          opt.style.cssText = 'padding:6px 12px; font-size:11px; cursor:pointer; color:var(--text-primary); transition:background 0.1s;';
+          opt.innerHTML = `<span style="color:var(--logic-green); font-weight:bold; margin-right:4px;">+</span> Add <strong style="color:${meta.color};">${meta.name}</strong> to chain`;
+          opt.onmouseenter = () => opt.style.background = '#2c2f37';
+          opt.onmouseleave = () => opt.style.background = 'transparent';
+          opt.onclick = () => {
+            addModuleToChain(modKey);
+            dropdown.classList.remove('show');
+          };
+          dropdown.appendChild(opt);
+        });
+      }
+    }
+
+    // Synchronize Module Cards in Grid:
+    // 1. Re-order DOM elements in #dsp-modules-grid to reflect chain_order first, then excluded cards
+    if (grid) {
+      dspState.chain_order.forEach(modKey => {
+        const card = document.getElementById(`card-module-${modKey}`);
+        if (card) grid.appendChild(card);
+      });
+      ALL_MODULES.forEach(modKey => {
+        if (!dspState.chain_order.includes(modKey)) {
+          const card = document.getElementById(`card-module-${modKey}`);
+          if (card) grid.appendChild(card);
+        }
+      });
+    }
+
+    // 2. Update Card Badges, Buttons, Removed Banners, and Classes
+    ALL_MODULES.forEach(modKey => {
+      const card = document.getElementById(`card-module-${modKey}`);
+      const posBadge = document.getElementById(`badge-pos-${modKey}`);
+      const btnLeft = document.getElementById(`btn-shift-left-${modKey}`);
+      const btnRight = document.getElementById(`btn-shift-right-${modKey}`);
+      const banner = document.getElementById(`banner-removed-${modKey}`);
+      const inChain = dspState.chain_order.includes(modKey);
+
+      if (inChain) {
+        const posIndex = dspState.chain_order.indexOf(modKey);
+        if (posBadge) {
+          posBadge.innerText = `#${posIndex + 1}`;
+          posBadge.style.color = MODULE_METADATA[modKey]?.color || 'inherit';
+        }
+        if (btnLeft) btnLeft.disabled = (posIndex === 0);
+        if (btnRight) btnRight.disabled = (posIndex === dspState.chain_order.length - 1);
+        if (banner) banner.style.display = 'none';
+        if (card) {
+          card.classList.remove('module-chain-removed');
+          card.classList.toggle('module-bypassed', !dspState[modKey]?.enabled);
+          card.classList.toggle('module-active', !!dspState[modKey]?.enabled);
+        }
+      } else {
+        if (posBadge) {
+          posBadge.innerText = 'OFF';
+          posBadge.style.color = 'var(--text-secondary)';
+        }
+        if (btnLeft) btnLeft.disabled = true;
+        if (btnRight) btnRight.disabled = true;
+        if (banner) banner.style.display = 'flex';
+        if (card) {
+          card.classList.add('module-chain-removed');
+          card.classList.remove('module-active');
+        }
+      }
+    });
+
+    // Update Action button text with active count
+    const runBtn = document.getElementById('btn-run-isolation');
+    if (runBtn && !runBtn.disabled) {
+      runBtn.innerText = `INITIATE ${dspState.chain_order.length}-MODULE DSP CHAIN`;
+    }
+  }
+
+  function shiftModuleInChain(modKey, dir) {
+    const curIdx = dspState.chain_order.indexOf(modKey);
+    if (curIdx === -1) return;
+    const targetIdx = curIdx + dir;
+    if (targetIdx < 0 || targetIdx >= dspState.chain_order.length) return;
+
+    // Swap positions
+    const temp = dspState.chain_order[curIdx];
+    dspState.chain_order[curIdx] = dspState.chain_order[targetIdx];
+    dspState.chain_order[targetIdx] = temp;
+
+    renderChainRouting();
+  }
+
+  function removeModuleFromChain(modKey) {
+    const idx = dspState.chain_order.indexOf(modKey);
+    if (idx !== -1) {
+      dspState.chain_order.splice(idx, 1);
+    }
+    if (dspState[modKey]) {
+      dspState[modKey].enabled = false;
+    }
+    const toggleBtn = document.getElementById(`btn-toggle-${modKey}`);
+    if (toggleBtn) {
+      toggleBtn.classList.remove('active');
+      toggleBtn.innerText = "BYPASSED";
+    }
+    renderChainRouting();
+  }
+
+  function addModuleToChain(modKey) {
+    if (!dspState.chain_order.includes(modKey)) {
+      dspState.chain_order.push(modKey);
+    }
+    if (dspState[modKey]) {
+      dspState[modKey].enabled = true;
+    }
+    const toggleBtn = document.getElementById(`btn-toggle-${modKey}`);
+    if (toggleBtn) {
+      toggleBtn.classList.add('active');
+      toggleBtn.innerText = "ACTIVE";
+    }
+    renderChainRouting();
+  }
+
+  function resetModuleChain() {
+    dspState.chain_order = ['denoiser', 'declicker', 'decrackler', 'deverb', 'deesser'];
+    ALL_MODULES.forEach(mod => {
+      if (dspState[mod]) dspState[mod].enabled = true;
+      const toggleBtn = document.getElementById(`btn-toggle-${mod}`);
+      if (toggleBtn) {
+        toggleBtn.classList.add('active');
+        toggleBtn.innerText = "ACTIVE";
+      }
+    });
+    renderChainRouting();
+  }
+
   // Module Toggles
   function setupModuleToggle(btnId, cardId, moduleKey) {
     const btn = document.getElementById(btnId);
@@ -245,6 +465,7 @@ document.addEventListener('DOMContentLoaded', () => {
       btn.innerText = active ? "ACTIVE" : "BYPASSED";
       card.classList.toggle('module-active', active);
       card.classList.toggle('module-bypassed', !active);
+      renderChainRouting();
     };
   }
   setupModuleToggle('btn-toggle-denoiser', 'card-module-denoiser', 'denoiser');
@@ -252,6 +473,42 @@ document.addEventListener('DOMContentLoaded', () => {
   setupModuleToggle('btn-toggle-decrackler', 'card-module-decrackler', 'decrackler');
   setupModuleToggle('btn-toggle-deverb', 'card-module-deverb', 'deverb');
   setupModuleToggle('btn-toggle-deesser', 'card-module-deesser', 'deesser');
+
+  // Wire Card Header Buttons and Banners for each module
+  ALL_MODULES.forEach(modKey => {
+    const btnLeft = document.getElementById(`btn-shift-left-${modKey}`);
+    const btnRight = document.getElementById(`btn-shift-right-${modKey}`);
+    const btnRemove = document.getElementById(`btn-remove-${modKey}`);
+    const btnReadd = document.getElementById(`btn-readd-${modKey}`);
+
+    if (btnLeft) btnLeft.onclick = () => shiftModuleInChain(modKey, -1);
+    if (btnRight) btnRight.onclick = () => shiftModuleInChain(modKey, 1);
+    if (btnRemove) btnRemove.onclick = () => removeModuleFromChain(modKey);
+    if (btnReadd) btnReadd.onclick = () => addModuleToChain(modKey);
+  });
+
+  // Wire Top Routing Strip Actions
+  const btnOpenAddModule = document.getElementById('btn-open-add-module');
+  const dropdownAddModule = document.getElementById('dropdown-add-module');
+  if (btnOpenAddModule && dropdownAddModule) {
+    btnOpenAddModule.onclick = (e) => {
+      e.stopPropagation();
+      dropdownAddModule.classList.toggle('show');
+    };
+    document.addEventListener('click', (e) => {
+      if (!dropdownAddModule.contains(e.target) && e.target !== btnOpenAddModule) {
+        dropdownAddModule.classList.remove('show');
+      }
+    });
+  }
+
+  const btnResetChain = document.getElementById('btn-reset-chain-order');
+  if (btnResetChain) {
+    btnResetChain.onclick = () => resetModuleChain();
+  }
+
+  // Initialize Routing Bar
+  renderChainRouting();
 
   // Sliders Wiring
   function wireSlider(sliderId, dispId, callback, formatFn, modKey) {
@@ -746,7 +1003,8 @@ document.addEventListener('DOMContentLoaded', () => {
             passes: passesSelect,
             precision: precisionSelect,
             threshold: dspState.threshold,
-            dsp: dspState
+            dsp: dspState,
+            chain_order: dspState.chain_order
           })
         });
 
@@ -776,7 +1034,7 @@ document.addEventListener('DOMContentLoaded', () => {
         alert("Isolation Error: " + err.message);
       } finally {
         runBtn.disabled = false;
-        runBtn.innerHTML = `INITIATE 5-MODULE DSP CHAIN`;
+        runBtn.innerHTML = `INITIATE ${dspState.chain_order.length}-MODULE DSP CHAIN`;
         setTimeout(() => {
           if (progressHud) progressHud.style.display = 'none';
           if (progressBar) progressBar.style.width = '0%';
@@ -795,7 +1053,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       btnReapply.disabled = true;
-      btnReapply.innerText = "⚡ COMPUTING 5-MODULE CHAIN...";
+      btnReapply.innerText = `⚡ COMPUTING ${dspState.chain_order.length}-MODULE CHAIN...`;
 
       try {
         const res = await fetch('/api/remaster', {
@@ -803,7 +1061,8 @@ document.addEventListener('DOMContentLoaded', () => {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             stem_id: currentStemData.stem_id,
-            dsp: dspState
+            dsp: dspState,
+            chain_order: dspState.chain_order
           })
         });
 
@@ -833,7 +1092,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         btnReapply.innerText = `✓ RE-MASTERED (${data.dsp_stats.clicks_repaired} clicks, ${data.dsp_stats.crackle_events || 0} crackle events)`;
         setTimeout(() => {
-          btnReapply.innerText = "⚡ RE-APPLY 5-MODULE DSP CHAIN (< 0.2s)";
+          btnReapply.innerText = `⚡ RE-APPLY ${dspState.chain_order.length}-MODULE DSP CHAIN (< 0.2s)`;
           btnReapply.disabled = false;
         }, 1800);
       } catch (err) {

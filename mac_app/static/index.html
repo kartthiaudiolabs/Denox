@@ -161,14 +161,49 @@
           </div>
         </div>
 
-        <div class="dsp-modules-grid">
+        <!-- INTERACTIVE SIGNAL CHAIN ROUTING & ALTERING BAR -->
+        <div class="chain-routing-strip" id="chain-routing-strip">
+          <div class="chain-strip-header">
+            <div class="chain-strip-title">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+              <span>SIGNAL CHAIN ROUTING // DYNAMIC SIGNAL PATH</span>
+            </div>
+            <div class="chain-strip-actions">
+              <button class="btn-chain-action" id="btn-open-add-module" title="Add an excluded module back into chain">
+                <span>+ ADD MODULE</span>
+              </button>
+              <div class="add-module-dropdown" id="dropdown-add-module"></div>
+              <button class="btn-chain-action" id="btn-reset-chain-order" title="Restore default 5-module chain sequence">
+                <span>↺ RESET CHAIN</span>
+              </button>
+            </div>
+          </div>
+          <div class="chain-path-flow" id="chain-path-flow">
+            <!-- Dynamically generated signal path chips -->
+          </div>
+        </div>
+
+        <div class="dsp-modules-grid" id="dsp-modules-grid">
           <!-- MODULE 1: DE-NOISER (BACKGROUND NOISE SEPARATION) -->
-          <div class="dsp-module-card module-active" id="card-module-denoiser">
+          <div class="dsp-module-card module-active" id="card-module-denoiser" data-module="denoiser">
             <div class="dsp-module-titlebar">
-              <span style="font-family:var(--font-ui); font-size:11px; font-weight:700; color:var(--logic-blue);">
-                DE-NOISER
-              </span>
-              <button class="dsp-toggle-btn active" id="btn-toggle-denoiser">ACTIVE</button>
+              <div style="display:flex; align-items:center; gap:6px;">
+                <span class="chain-pos-badge" id="badge-pos-denoiser">#1</span>
+                <span style="font-family:var(--font-ui); font-size:11px; font-weight:700; color:var(--logic-blue);">
+                  DE-NOISER
+                </span>
+              </div>
+              <div class="chain-card-header-actions">
+                <button class="btn-card-shift" id="btn-shift-left-denoiser" title="Move earlier in chain">◀</button>
+                <button class="btn-card-shift" id="btn-shift-right-denoiser" title="Move later in chain">▶</button>
+                <button class="dsp-toggle-btn active" id="btn-toggle-denoiser">ACTIVE</button>
+                <button class="btn-card-remove" id="btn-remove-denoiser" title="Remove module from signal chain">✕</button>
+              </div>
+            </div>
+
+            <div class="module-removed-banner" id="banner-removed-denoiser" style="display:none;">
+              <span style="color:var(--logic-amber); font-weight:700; font-size:10px;">EXCLUDED FROM CHAIN</span>
+              <button class="btn-readd-chain" id="btn-readd-denoiser">+ ADD TO CHAIN</button>
             </div>
 
             <div class="slider-group">
@@ -242,12 +277,25 @@
           </div>
 
           <!-- MODULE 2: DE-CLICKER (IMPULSE & MOUTH NOISE) -->
-          <div class="dsp-module-card module-active" id="card-module-declicker">
+          <div class="dsp-module-card module-active" id="card-module-declicker" data-module="declicker">
             <div class="dsp-module-titlebar">
-              <span style="font-family:var(--font-ui); font-size:11px; font-weight:700; color:var(--logic-blue);">
-                DE-CLICKER
-              </span>
-              <button class="dsp-toggle-btn active" id="btn-toggle-declicker">ACTIVE</button>
+              <div style="display:flex; align-items:center; gap:6px;">
+                <span class="chain-pos-badge" id="badge-pos-declicker">#2</span>
+                <span style="font-family:var(--font-ui); font-size:11px; font-weight:700; color:var(--logic-blue);">
+                  DE-CLICKER
+                </span>
+              </div>
+              <div class="chain-card-header-actions">
+                <button class="btn-card-shift" id="btn-shift-left-declicker" title="Move earlier in chain">◀</button>
+                <button class="btn-card-shift" id="btn-shift-right-declicker" title="Move later in chain">▶</button>
+                <button class="dsp-toggle-btn active" id="btn-toggle-declicker">ACTIVE</button>
+                <button class="btn-card-remove" id="btn-remove-declicker" title="Remove module from signal chain">✕</button>
+              </div>
+            </div>
+
+            <div class="module-removed-banner" id="banner-removed-declicker" style="display:none;">
+              <span style="color:var(--logic-amber); font-weight:700; font-size:10px;">EXCLUDED FROM CHAIN</span>
+              <button class="btn-readd-chain" id="btn-readd-declicker">+ ADD TO CHAIN</button>
             </div>
 
               <div class="slider-group">
@@ -321,12 +369,25 @@
             </div>
 
             <!-- MODULE 3: DE-CRACKLER (SURFACE & GRANULAR NOISE) -->
-            <div class="dsp-module-card module-active" id="card-module-decrackler">
+            <div class="dsp-module-card module-active" id="card-module-decrackler" data-module="decrackler">
               <div class="dsp-module-titlebar">
-                <span style="font-family:var(--font-ui); font-size:11px; font-weight:700; color:var(--logic-amber);">
-                  DE-CRACKLER
-                </span>
-                <button class="dsp-toggle-btn active" id="btn-toggle-decrackler">ACTIVE</button>
+                <div style="display:flex; align-items:center; gap:6px;">
+                  <span class="chain-pos-badge" id="badge-pos-decrackler">#3</span>
+                  <span style="font-family:var(--font-ui); font-size:11px; font-weight:700; color:var(--logic-amber);">
+                    DE-CRACKLER
+                  </span>
+                </div>
+                <div class="chain-card-header-actions">
+                  <button class="btn-card-shift" id="btn-shift-left-decrackler" title="Move earlier in chain">◀</button>
+                  <button class="btn-card-shift" id="btn-shift-right-decrackler" title="Move later in chain">▶</button>
+                  <button class="dsp-toggle-btn active" id="btn-toggle-decrackler">ACTIVE</button>
+                  <button class="btn-card-remove" id="btn-remove-decrackler" title="Remove module from signal chain">✕</button>
+                </div>
+              </div>
+
+              <div class="module-removed-banner" id="banner-removed-decrackler" style="display:none;">
+                <span style="color:var(--logic-amber); font-weight:700; font-size:10px;">EXCLUDED FROM CHAIN</span>
+                <button class="btn-readd-chain" id="btn-readd-decrackler">+ ADD TO CHAIN</button>
               </div>
 
               <div class="slider-group">
@@ -400,12 +461,25 @@
             </div>
 
             <!-- MODULE 4: DE-VERB (DEREVERBERATION) -->
-            <div class="dsp-module-card module-active" id="card-module-deverb">
+            <div class="dsp-module-card module-active" id="card-module-deverb" data-module="deverb">
               <div class="dsp-module-titlebar">
-                <span style="font-family:var(--font-ui); font-size:11px; font-weight:700; color:var(--logic-cyan);">
-                  DE-VERB (ACOUSTICS)
-                </span>
-                <button class="dsp-toggle-btn active" id="btn-toggle-deverb">ACTIVE</button>
+                <div style="display:flex; align-items:center; gap:6px;">
+                  <span class="chain-pos-badge" id="badge-pos-deverb">#4</span>
+                  <span style="font-family:var(--font-ui); font-size:11px; font-weight:700; color:var(--logic-cyan);">
+                    DE-VERB (ACOUSTICS)
+                  </span>
+                </div>
+                <div class="chain-card-header-actions">
+                  <button class="btn-card-shift" id="btn-shift-left-deverb" title="Move earlier in chain">◀</button>
+                  <button class="btn-card-shift" id="btn-shift-right-deverb" title="Move later in chain">▶</button>
+                  <button class="dsp-toggle-btn active" id="btn-toggle-deverb">ACTIVE</button>
+                  <button class="btn-card-remove" id="btn-remove-deverb" title="Remove module from signal chain">✕</button>
+                </div>
+              </div>
+
+              <div class="module-removed-banner" id="banner-removed-deverb" style="display:none;">
+                <span style="color:var(--logic-amber); font-weight:700; font-size:10px;">EXCLUDED FROM CHAIN</span>
+                <button class="btn-readd-chain" id="btn-readd-deverb">+ ADD TO CHAIN</button>
               </div>
 
               <div class="slider-group">
@@ -479,12 +553,25 @@
             </div>
 
             <!-- MODULE 5: DE-ESSER (HARSH SIBILANCE) -->
-            <div class="dsp-module-card module-active" id="card-module-deesser">
+            <div class="dsp-module-card module-active" id="card-module-deesser" data-module="deesser">
               <div class="dsp-module-titlebar">
-                <span style="font-family:var(--font-ui); font-size:11px; font-weight:700; color:var(--logic-purple);">
-                  DE-ESSER (HARSH 'S')
-                </span>
-                <button class="dsp-toggle-btn active" id="btn-toggle-deesser">ACTIVE</button>
+                <div style="display:flex; align-items:center; gap:6px;">
+                  <span class="chain-pos-badge" id="badge-pos-deesser">#5</span>
+                  <span style="font-family:var(--font-ui); font-size:11px; font-weight:700; color:var(--logic-purple);">
+                    DE-ESSER (HARSH 'S')
+                  </span>
+                </div>
+                <div class="chain-card-header-actions">
+                  <button class="btn-card-shift" id="btn-shift-left-deesser" title="Move earlier in chain">◀</button>
+                  <button class="btn-card-shift" id="btn-shift-right-deesser" title="Move later in chain">▶</button>
+                  <button class="dsp-toggle-btn active" id="btn-toggle-deesser">ACTIVE</button>
+                  <button class="btn-card-remove" id="btn-remove-deesser" title="Remove module from signal chain">✕</button>
+                </div>
+              </div>
+
+              <div class="module-removed-banner" id="banner-removed-deesser" style="display:none;">
+                <span style="color:var(--logic-amber); font-weight:700; font-size:10px;">EXCLUDED FROM CHAIN</span>
+                <button class="btn-readd-chain" id="btn-readd-deesser">+ ADD TO CHAIN</button>
               </div>
 
               <div class="slider-group">

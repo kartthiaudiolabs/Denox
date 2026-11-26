@@ -1496,6 +1496,9 @@ class DeEsser:
 # 6. DENOX AUDIO MASTERING CHAIN ORCHESTRATOR
 # -----------------------------------------------------------------------------
 
+DEFAULT_CHAIN_ORDER: List[str] = ["denoiser", "declicker", "decrackler", "deverb", "deesser"]
+
+
 @dataclasses.dataclass
 class DenoxMasteringChainConfig:
     # Dedicated 5-Stage Audio Modules
@@ -1504,6 +1507,7 @@ class DenoxMasteringChainConfig:
     decrackler: DeCracklerConfig = dataclasses.field(default_factory=DeCracklerConfig)
     deverb: DeVerbConfig = dataclasses.field(default_factory=DeVerbConfig)
     deesser: DeEsserConfig = dataclasses.field(default_factory=DeEsserConfig)
+    chain_order: List[str] = dataclasses.field(default_factory=lambda: list(DEFAULT_CHAIN_ORDER))
 
     # Backwards compatibility helper for isolation threshold
     @property
@@ -1727,8 +1731,9 @@ GLOBAL_CHAIN_PRESETS: Dict[str, Dict[str, Any]] = {
 
 
 class DenoxMasteringProcessor:
-    """Runs the complete mastering chain:
-    De-Noiser -> De-Clicker -> De-Crackler -> De-Verb -> De-Esser.
+    """Runs the modular mastering chain with arbitrary sequence altering:
+    Supports custom chain ordering, enabling, bypassing, adding, and removing modules.
+    Default: De-Noiser -> De-Clicker -> De-Crackler -> De-Verb -> De-Esser.
     """
 
     def __init__(self, sample_rate: int = 48000):
@@ -1745,44 +1750,62 @@ class DenoxMasteringProcessor:
         isolated_vocal: np.ndarray,
         config: DenoxMasteringChainConfig
     ) -> Tuple[np.ndarray, np.ndarray, Dict[str, Any]]:
-        """Processes the audio through the De-Noiser and all DSP modules."""
-        # Step 1: De-Noiser (Neural Background Noise Separation & Thresholding)
-        vocal, denoise_stats = self.denoiser.process(
-            original_audio,
-            isolated_vocal,
-            config.denoiser
-        )
+        """Processes audio dynamically following user-specified module chain order."""
+        # Sanitize and validate active chain order
+        requested_order = [str(m).lower() for m in (config.chain_order or DEFAULT_CHAIN_ORDER) if str(m).lower() in DEFAULT_CHAIN_ORDER]
+        if not requested_order:
+            requested_order = list(DEFAULT_CHAIN_ORDER)
+
+        # Initial signal starts as isolated neural stem if available, else original raw audio
+        current_audio = isolated_vocal.copy() if isolated_vocal is not None and len(isolated_vocal) > 0 else original_audio.copy()
 
         stats: Dict[str, Any] = {
-            "threshold_applied": config.denoiser.threshold,
-            "denoiser_applied": config.denoiser.enabled,
-            "denoiser_mode": denoise_stats.get("mode", "spectral_gate"),
+            "chain_order": requested_order,
+            "threshold_applied": config.denoiser.threshold if "denoiser" in requested_order and config.denoiser.enabled else 0.0,
+            "denoiser_applied": "denoiser" in requested_order and config.denoiser.enabled,
+            "denoiser_mode": "bypassed",
             "clicks_repaired": 0,
             "crackle_events": 0,
-            "decrackler_applied": config.decrackler.enabled,
-            "deverb_applied": config.deverb.enabled,
-            "deesser_applied": config.deesser.enabled
+            "decrackler_applied": "decrackler" in requested_order and config.decrackler.enabled,
+            "deverb_applied": "deverb" in requested_order and config.deverb.enabled,
+            "deesser_applied": "deesser" in requested_order and config.deesser.enabled,
+            "executed_modules": []
         }
 
-        # Step 2: De-Clicker
-        if config.declicker.enabled:
-            vocal, clicks = self.declicker.process(vocal, config.declicker)
-            stats["clicks_repaired"] = clicks
+        # Sequentially route audio through only the active modules in exact chain order
+        for mod_name in requested_order:
+            if mod_name == "denoiser" and config.denoiser.enabled:
+                # If denoiser is first in the active chain, it blends original with isolated vocal.
+                # If placed later, it blends current intermediate audio with isolated vocal.
+                input_mix = original_audio if len(stats["executed_modules"]) == 0 else current_audio
+                current_audio, denoise_stats = self.denoiser.process(
+                    input_mix,
+                    isolated_vocal if isolated_vocal is not None else original_audio,
+                    config.denoiser
+                )
+                stats["denoiser_mode"] = denoise_stats.get("mode", "spectral_gate")
+                stats["executed_modules"].append("denoiser")
 
-        # Step 3: De-Crackler
-        if config.decrackler.enabled:
-            vocal, crackle_stats = self.decrackler.process(vocal, config.decrackler)
-            stats["crackle_events"] = crackle_stats.get("events_attenuated", 0)
+            elif mod_name == "declicker" and config.declicker.enabled:
+                current_audio, clicks = self.declicker.process(current_audio, config.declicker)
+                stats["clicks_repaired"] = clicks
+                stats["executed_modules"].append("declicker")
 
-        # Step 4: De-Verb
-        if config.deverb.enabled:
-            vocal = self.deverb.process(vocal, config.deverb)
+            elif mod_name == "decrackler" and config.decrackler.enabled:
+                current_audio, crackle_stats = self.decrackler.process(current_audio, config.decrackler)
+                stats["crackle_events"] = crackle_stats.get("events_attenuated", 0)
+                stats["executed_modules"].append("decrackler")
 
-        # Step 5: De-Esser
-        if config.deesser.enabled:
-            vocal = self.deesser.process(vocal, config.deesser)
+            elif mod_name == "deverb" and config.deverb.enabled:
+                current_audio = self.deverb.process(current_audio, config.deverb)
+                stats["executed_modules"].append("deverb")
 
-        min_len = min(len(original_audio), len(vocal))
-        background = original_audio[:min_len] - vocal[:min_len]
+            elif mod_name == "deesser" and config.deesser.enabled:
+                current_audio = self.deesser.process(current_audio, config.deesser)
+                stats["executed_modules"].append("deesser")
 
-        return vocal[:min_len], background, stats
+        min_len = min(len(original_audio), len(current_audio))
+        vocal = current_audio[:min_len]
+        background = original_audio[:min_len] - vocal
+
+        return vocal, background, stats

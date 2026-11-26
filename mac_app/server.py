@@ -47,11 +47,13 @@ class IsolateRequest(BaseModel):
     precision: str = "auto"
     threshold: float = 1.0
     dsp: Optional[Dict[str, Any]] = None
+    chain_order: Optional[List[str]] = None
 
 
 class RemasterRequest(BaseModel):
     stem_id: str
     dsp: Dict[str, Any]
+    chain_order: Optional[List[str]] = None
 
 
 class ModulePreviewRequest(BaseModel):
@@ -158,9 +160,11 @@ async def get_dsp_presets():
 async def run_isolation(req: IsolateRequest):
     """Executes voice isolation on a file and applies the DSP chain."""
     try:
-        dsp_dict = req.dsp or {}
+        dsp_dict = dict(req.dsp) if req.dsp else {}
         if "threshold" not in dsp_dict:
             dsp_dict["threshold"] = req.threshold
+        if req.chain_order and "chain_order" not in dsp_dict:
+            dsp_dict["chain_order"] = req.chain_order
 
         result = engine.isolate_file(
             file_path=req.file_path,
@@ -179,7 +183,10 @@ async def run_isolation(req: IsolateRequest):
 async def remaster_audio(req: RemasterRequest):
     """Re-applies DSP chain to cached isolation with sub-second turnaround."""
     try:
-        result = engine.remaster_stem(req.stem_id, req.dsp)
+        dsp_dict = dict(req.dsp) if req.dsp else {}
+        if req.chain_order and "chain_order" not in dsp_dict:
+            dsp_dict["chain_order"] = req.chain_order
+        result = engine.remaster_stem(req.stem_id, dsp_dict)
         return result
     except Exception as e:
         logger.exception("Remaster failed")

@@ -966,3 +966,299 @@ body {
   overflow-y: auto;
   white-space: pre-wrap;
 }
+
+/* ==========================================================================
+   DYNAMIC MODULE CHAIN ROUTING & ALTERING (LOGIC PRO 13 MODULAR RACK)
+   ========================================================================== */
+.chain-routing-strip {
+  background: #191b20;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-sm);
+  padding: 10px 14px;
+  margin-bottom: 14px;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+
+.chain-strip-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.chain-strip-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-ui);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: var(--text-secondary);
+}
+
+.chain-strip-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  position: relative;
+}
+
+.btn-chain-action {
+  font-family: var(--font-ui);
+  font-size: 10px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 3px;
+  cursor: pointer;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: #2a2c33;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.15s ease;
+}
+
+.btn-chain-action:hover {
+  background: #363942;
+  border-color: rgba(255, 255, 255, 0.25);
+  color: #ffffff;
+}
+
+.btn-add-module-active {
+  background: rgba(48, 209, 88, 0.15);
+  border-color: rgba(48, 209, 88, 0.4);
+  color: var(--logic-green);
+}
+
+.btn-add-module-active:hover {
+  background: rgba(48, 209, 88, 0.25);
+}
+
+.chain-path-flow {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 4px 0;
+}
+
+.chain-io-pill {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 700;
+  padding: 4px 7px;
+  border-radius: 3px;
+  background: #121316;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--text-secondary);
+  letter-spacing: 0.5px;
+}
+
+.chain-connector {
+  color: rgba(255, 255, 255, 0.25);
+  font-size: 11px;
+  user-select: none;
+}
+
+.chain-node-chip {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: #23252a;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 4px;
+  padding: 3px 6px;
+  font-family: var(--font-ui);
+  font-size: 10px;
+  font-weight: 700;
+  transition: all 0.15s ease;
+}
+
+.chain-node-chip:hover {
+  border-color: rgba(255, 255, 255, 0.25);
+  background: #2a2d34;
+}
+
+.chain-pos-badge {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 800;
+  padding: 1px 4px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-secondary);
+}
+
+.btn-node-shift {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 9px;
+  cursor: pointer;
+  padding: 1px 3px;
+  border-radius: 2px;
+  transition: all 0.1s ease;
+}
+
+.btn-node-shift:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: #ffffff;
+}
+
+.btn-node-shift:disabled {
+  opacity: 0.2;
+  cursor: default;
+}
+
+.btn-node-remove {
+  background: transparent;
+  border: none;
+  color: rgba(255, 69, 58, 0.7);
+  font-size: 11px;
+  font-weight: bold;
+  cursor: pointer;
+  padding: 1px 4px;
+  margin-left: 2px;
+  border-radius: 2px;
+  transition: all 0.1s ease;
+}
+
+.btn-node-remove:hover {
+  background: rgba(255, 69, 58, 0.25);
+  color: var(--logic-red);
+}
+
+/* Card Header Chain Controls */
+.chain-card-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.btn-card-shift {
+  background: #2c2f37;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--text-secondary);
+  font-size: 9px;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 3px 6px;
+  border-radius: 3px;
+  transition: all 0.1s;
+}
+
+.btn-card-shift:hover:not(:disabled) {
+  background: #3a3e49;
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.btn-card-shift:disabled {
+  opacity: 0.25;
+  cursor: not-allowed;
+}
+
+.btn-card-remove {
+  background: rgba(255, 69, 58, 0.12);
+  border: 1px solid rgba(255, 69, 58, 0.3);
+  color: var(--logic-red);
+  font-family: var(--font-ui);
+  font-size: 9px;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 3px 6px;
+  border-radius: 3px;
+  transition: all 0.15s ease;
+}
+
+.btn-card-remove:hover {
+  background: rgba(255, 69, 58, 0.25);
+  border-color: var(--logic-red);
+  color: #ffffff;
+}
+
+/* Removed Module State */
+.dsp-module-card.module-chain-removed {
+  background: #17181c !important;
+  border: 1px dashed rgba(255, 69, 58, 0.35) !important;
+  position: relative;
+}
+
+.dsp-module-card.module-chain-removed .slider-group,
+.dsp-module-card.module-chain-removed .module-audition-deck {
+  opacity: 0.25;
+  pointer-events: none;
+  filter: grayscale(1);
+}
+
+.module-removed-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(255, 69, 58, 0.1);
+  border: 1px solid rgba(255, 69, 58, 0.25);
+  border-radius: var(--radius-sm);
+  padding: 6px 10px;
+  margin-bottom: 8px;
+}
+
+.btn-readd-chain {
+  background: var(--logic-cyan);
+  border: 1px solid #1ba5bb;
+  color: #0b1a20;
+  font-family: var(--font-ui);
+  font-size: 10px;
+  font-weight: 800;
+  padding: 3px 8px;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-readd-chain:hover {
+  background: #39e5fe;
+  color: #000000;
+  box-shadow: 0 0 8px rgba(35, 206, 235, 0.4);
+}
+
+/* Add Module Dropdown Menu */
+.add-module-dropdown {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 4px;
+  background: #23252b;
+  border: 1px solid var(--border-main);
+  border-radius: var(--radius-sm);
+  padding: 4px 0;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.7);
+  z-index: 100;
+  min-width: 170px;
+  display: none;
+}
+
+.add-module-dropdown.show {
+  display: block;
+}
+
+.add-module-option {
+  padding: 6px 12px;
+  font-family: var(--font-ui);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-primary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: background 0.1s;
+}
+
+.add-module-option:hover {
+  background: #31353f;
+  color: #ffffff;
+}

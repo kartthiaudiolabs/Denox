@@ -230,6 +230,12 @@ def build_dsp_config(dsp_params: Optional[Dict[str, Any]] = None) -> dsp_module.
         if "mode" in de:
             cfg.deesser.mode = str(de["mode"])
 
+    # Dynamic Chain Ordering and Modular Routing
+    if "chain_order" in dsp_params and isinstance(dsp_params["chain_order"], list):
+        valid_order = [str(m).lower() for m in dsp_params["chain_order"] if str(m).lower() in dsp_module.DEFAULT_CHAIN_ORDER]
+        if valid_order:
+            cfg.chain_order = valid_order
+
     return cfg
 
 
