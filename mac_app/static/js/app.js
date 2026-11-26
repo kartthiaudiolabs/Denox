@@ -516,7 +516,14 @@ document.addEventListener('DOMContentLoaded', () => {
           })
         });
 
-        if (!res.ok) throw new Error("Failed to load module preview");
+        if (!res.ok) {
+          let errDetail = "Failed to load module preview";
+          try {
+            const errJson = await res.json();
+            errDetail = errJson.detail || errJson.error || errDetail;
+          } catch (_) {}
+          throw new Error(errDetail);
+        }
         const data = await res.json();
 
         this.activeMod = mod;

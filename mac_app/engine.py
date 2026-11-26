@@ -15,11 +15,12 @@ import sys
 import tempfile
 import threading
 import time
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 import soundfile as sf
 import torch
+import torchaudio
 
 from inworld import voice_isolation as vi
 from inworld.voice_isolation import audio as audio_lib
@@ -241,13 +242,16 @@ def isolate_file(
 ) -> Dict[str, Any]:
     """Performs neural voice isolation followed by the DENOX DSP mastering suite."""
     models = get_engine_models()
-    path = pathlib.Path(file_path).expanduser().resolve()
-    if not path.exists():
-        raise FileNotFoundError(f"File not found: {file_path}")
+    path = resolve_source_audio_path(file_path)
 
-    # Load audio
-    data, rate = sf.read(str(path), dtype="float32", always_2d=True)
-    mono = data.mean(axis=1, dtype=np.float32)
+    # Load audio supporting WAV, MP3, FLAC, M4A
+    try:
+        data, rate = sf.read(str(path), dtype="float32", always_2d=True)
+        mono = data.mean(axis=1, dtype=np.float32)
+    except Exception:
+        wav_t, rate = torchaudio.load(str(path))
+        mono_t = audio_lib.to_mono(wav_t)
+        mono = mono_t.cpu().numpy().astype(np.float32)
 
     # Resample to 48kHz if needed
     if rate != SAMPLE_RATE:
@@ -370,6 +374,27 @@ def remaster_stem(stem_id: str, dsp_params: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
+def resolve_source_audio_path(file_path: Union[str, pathlib.Path], stem_id: Optional[str] = None) -> pathlib.Path:
+    """Robustly locates an audio file across absolute, relative, uploads, demo examples, and stem directories."""
+    p = pathlib.Path(file_path).expanduser()
+    if p.is_file():
+        return p.resolve()
+    if (pathlib.Path.cwd() / p).is_file():
+        return (pathlib.Path.cwd() / p).resolve()
+    if (TMP_DIR / "uploads" / p.name).is_file():
+        return (TMP_DIR / "uploads" / p.name).resolve()
+    if (pathlib.Path("demo/examples") / p.name).is_file():
+        return (pathlib.Path("demo/examples") / p.name).resolve()
+    if stem_id and (TMP_DIR / stem_id / "original.wav").is_file():
+        return (TMP_DIR / stem_id / "original.wav").resolve()
+    if stem_id and (TMP_DIR / stem_id / p.name).is_file():
+        return (TMP_DIR / stem_id / p.name).resolve()
+    matches = list(TMP_DIR.glob(f"**/{p.name}"))
+    if matches and matches[0].is_file():
+        return matches[0].resolve()
+    raise FileNotFoundError(f"Source audio file not found: {file_path}")
+
+
 def generate_module_preview(
     file_path: str,
     module_name: str,
@@ -378,29 +403,38 @@ def generate_module_preview(
     source_mode: str = "original",
 ) -> Dict[str, Any]:
     """Generates audition audio for an individual module with current settings."""
-    path = pathlib.Path(file_path)
-    if not path.is_absolute():
-        if not path.exists():
-            examples_p = pathlib.Path("demo/examples") / path.name
-            if examples_p.exists():
-                path = examples_p
-            else:
-                raise FileNotFoundError(f"Source audio file not found: {file_path}")
+    path = resolve_source_audio_path(file_path, stem_id=stem_id)
 
     # Check if stem_id provided and we want vocal source
     raw_vocal = None
     if stem_id:
         stem_dir = TMP_DIR / stem_id
         raw_vocal_path = stem_dir / "raw_neural_voice.wav"
+        if not raw_vocal_path.exists():
+            raw_vocal_path = stem_dir / "vocal.wav"
         if raw_vocal_path.exists():
-            raw_vocal, _ = sf.read(str(raw_vocal_path), dtype="float32")
+            try:
+                raw_vocal, _ = sf.read(str(raw_vocal_path), dtype="float32")
+                if raw_vocal.ndim > 1:
+                    raw_vocal = np.mean(raw_vocal, axis=1)
+            except Exception:
+                raw_vocal = None
 
-    # Load and resample audio
-    audio, sr = sf.read(str(path), dtype="float32")
+    # Load and resample audio supporting multiple formats (WAV, MP3, FLAC, M4A)
+    try:
+        audio, sr = sf.read(str(path), dtype="float32")
+    except Exception:
+        wav_t, sr = torchaudio.load(str(path))
+        audio = wav_t.numpy()
+        if audio.ndim == 2:
+            audio = audio.T
+
     if audio.ndim > 1:
         audio = np.mean(audio, axis=1)
+
     if sr != SAMPLE_RATE:
-        audio = audio_lib.resample(audio, sr, SAMPLE_RATE)
+        tensor_audio = torch.from_numpy(audio.astype(np.float32))
+        audio = audio_lib.resample(tensor_audio, sr, SAMPLE_RATE).cpu().numpy().astype(np.float32)
 
     duration_sec = round(len(audio) / SAMPLE_RATE, 2)
 
@@ -440,18 +474,23 @@ def generate_module_preview(
         if raw_vocal is None:
             if vocal_path.exists():
                 raw_vocal, _ = sf.read(str(vocal_path), dtype="float32")
+                if raw_vocal.ndim > 1:
+                    raw_vocal = np.mean(raw_vocal, axis=1)
             else:
                 models = get_engine_models()
                 with models.offline_lock:
-                    raw_vocal = models.offline.isolate(audio, SAMPLE_RATE)
+                    raw_vocal = models.offline.isolate(audio, SAMPLE_RATE, output_sample_rate=SAMPLE_RATE)
                     if isinstance(raw_vocal, torch.Tensor):
                         raw_vocal = raw_vocal.cpu().numpy()
+                    if raw_vocal.ndim > 1:
+                        raw_vocal = np.mean(raw_vocal, axis=1)
                 sf.write(str(vocal_path), pcm16(raw_vocal), SAMPLE_RATE, subtype="PCM_16")
         elif not vocal_path.exists():
             sf.write(str(vocal_path), pcm16(raw_vocal), SAMPLE_RATE, subtype="PCM_16")
         
         vocal_url = f"/api/preview/audio/{vocal_filename}?t={time.time()}"
-        processed, _ = denoiser.process(audio, raw_vocal, cfg.denoiser)
+        min_l = min(len(audio), len(raw_vocal))
+        processed, _ = denoiser.process(audio[:min_l], raw_vocal[:min_l], cfg.denoiser)
 
     elif module_name == "declicker":
         declicker = dsp_module.DeClicker(SAMPLE_RATE)
