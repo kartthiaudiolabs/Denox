@@ -225,6 +225,9 @@ document.addEventListener('DOMContentLoaded', () => {
       if (typeof auditionManager !== 'undefined') {
         auditionManager.notifyParamChange('denoiser');
       }
+      if (deck && deck.isPlaying) {
+        deck.setRealtimeThreshold(dspState.threshold);
+      }
       let desc = "ZERO BACKGROUND NOISE";
       if (val === 0) desc = "RAW AUDIO (0% CLEAN)";
       else if (val <= 25) desc = "SUBTLE NOISE ATTENUATION";
@@ -729,7 +732,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
       }
 
-      if (this.activeMod === mod && !this.isPlaying && window.denoxDsp && window.denoxDsp.audioBuffers.original) {
+      if (this.activeMod === mod && !this.isPlaying && window.denoxDsp && (window.denoxDsp.audioBuffers.original || window.denoxDsp.audioBuffers.vocal)) {
         this.play(mod);
         return;
       }
@@ -740,7 +743,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async loadAndPlay(mod) {
       selectedFilePath = selectedFilePath || window.selectedFilePath;
-      if (!selectedFilePath) {
+      if (!selectedFilePath && !currentStemData) {
         alert("Please insert or select an audio file first to audition.");
         return;
       }
@@ -761,15 +764,49 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       try {
+        this.activeMod = mod;
+        this.isBypassed = false;
+
+        // Instant Zero-Latency Audition: If stems are already loaded in current session,
+        // start Web Audio DSP engine immediately with cached buffers!
+        if (currentStemData && currentStemData.urls && window.denoxDsp) {
+          const stemUrls = {
+            original_url: currentStemData.urls.original,
+            vocal_url: currentStemData.urls.vocal
+          };
+          await window.denoxDsp.setupModuleBuffers(stemUrls, currentStemData.duration);
+          window.denoxDsp.updateModuleParams(mod, dspState[mod]);
+          window.denoxDsp.play(mod, 0);
+
+          const abBtn = document.getElementById(`btn-ab-${mod}`);
+          if (abBtn) {
+            abBtn.classList.remove('bypassed');
+            abBtn.innerText = "A (ACTIVE)";
+          }
+
+          this.isPlaying = true;
+          this.startTimerLoop();
+
+          if (playBtn) {
+            playBtn.classList.remove('loading');
+            playBtn.classList.add('playing');
+            if (txt) txt.innerText = "PAUSE";
+            if (icon) icon.innerText = "⏸";
+          }
+          if (deckEl) deckEl.classList.add('auditioning');
+          return;
+        }
+
+        const srcMode = (mod === 'denoiser' || !currentStemData?.stem_id) ? 'original' : 'vocal';
         const res = await fetch('/api/preview/module', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            file_path: selectedFilePath,
+            file_path: selectedFilePath || currentStemData?.filename,
             module_name: mod,
             params: dspState[mod],
             stem_id: currentStemData?.stem_id,
-            source_mode: 'original'
+            source_mode: srcMode
           })
         });
 
@@ -782,9 +819,6 @@ document.addEventListener('DOMContentLoaded', () => {
           throw new Error(errDetail);
         }
         const data = await res.json();
-
-        this.activeMod = mod;
-        this.isBypassed = false;
 
         // Setup real-time Web Audio API DSP Engine
         if (window.denoxDsp) {
@@ -942,26 +976,9 @@ document.addEventListener('DOMContentLoaded', () => {
         window.denoxDsp.updateModuleParams(mod, dspState[mod]);
       }
 
-      // 2. Debounced background sync for server preview cache
-      if (this.activeMod === mod && this.isPlaying) {
-        clearTimeout(this.debounceTimer);
-        this.debounceTimer = setTimeout(async () => {
-          try {
-            await fetch('/api/preview/module', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                file_path: selectedFilePath,
-                module_name: mod,
-                params: dspState[mod],
-                stem_id: currentStemData?.stem_id,
-                source_mode: 'original'
-              })
-            });
-          } catch (e) {
-            console.debug("Background preview cache update:", e);
-          }
-        }, 500);
+      // 2. Real-time threshold update for main studio deck
+      if (deck && deck.isPlaying && mod === 'denoiser') {
+        deck.setRealtimeThreshold(dspState.threshold);
       }
     }
   }

@@ -456,9 +456,17 @@ def generate_module_preview(
     orig_path = PREVIEWS_DIR / orig_filename
     vocal_path = PREVIEWS_DIR / vocal_filename
 
-    # Save orig preview if not exists
+    # If raw_vocal is available from stem_id, write vocal preview file immediately
+    if raw_vocal is not None and not vocal_path.exists():
+        sf.write(str(vocal_path), pcm16(raw_vocal), SAMPLE_RATE, subtype="PCM_16")
+
+    # Determine target source audio: vocal stem if available, else original raw audio
+    use_vocal = (source_mode == "vocal" or (stem_id is not None and module_name != "denoiser")) and (raw_vocal is not None)
+    target_src = raw_vocal if use_vocal else audio
+
+    # Save dry comparison preview if not exists (dry vocal for downstream modules, raw audio for denoiser)
     if not orig_path.exists():
-        sf.write(str(orig_path), pcm16(audio), SAMPLE_RATE, subtype="PCM_16")
+        sf.write(str(orig_path), pcm16(target_src), SAMPLE_RATE, subtype="PCM_16")
 
     vocal_url = f"/api/preview/audio/{vocal_filename}?t={time.time()}" if vocal_path.exists() else None
 
@@ -500,25 +508,21 @@ def generate_module_preview(
 
     elif module_name == "declicker":
         declicker = dsp_module.DeClicker(SAMPLE_RATE)
-        src = raw_vocal if (source_mode == "vocal" and raw_vocal is not None) else audio
-        processed, _ = declicker.process(src, cfg.declicker)
+        processed, _ = declicker.process(target_src, cfg.declicker)
 
     elif module_name == "decrackler":
         decrackler = dsp_module.DeCrackler(SAMPLE_RATE)
-        src = raw_vocal if (source_mode == "vocal" and raw_vocal is not None) else audio
-        processed, _ = decrackler.process(src, cfg.decrackler)
+        processed, _ = decrackler.process(target_src, cfg.decrackler)
 
     elif module_name == "deverb":
         deverb = dsp_module.DeVerb(SAMPLE_RATE)
-        src = raw_vocal if (source_mode == "vocal" and raw_vocal is not None) else audio
-        processed = deverb.process(src, cfg.deverb)
+        processed = deverb.process(target_src, cfg.deverb)
 
     elif module_name == "deesser":
         deesser = dsp_module.DeEsser(SAMPLE_RATE)
-        src = raw_vocal if (source_mode == "vocal" and raw_vocal is not None) else audio
-        processed = deesser.process(src, cfg.deesser)
+        processed = deesser.process(target_src, cfg.deesser)
     else:
-        processed = audio
+        processed = target_src
 
     sf.write(str(out_path), pcm16(processed), SAMPLE_RATE, subtype="PCM_16")
 

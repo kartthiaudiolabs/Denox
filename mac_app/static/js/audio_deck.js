@@ -135,13 +135,25 @@ class StemsAudioDeck {
     this._updateGains();
   }
 
+  setRealtimeThreshold(threshold) {
+    if (this.auditionMode !== 'vocal' || !this.audioCtx) return;
+    const t = Math.max(0.0, Math.min(1.0, threshold));
+    const now = this.audioCtx.currentTime;
+    if (this.tracks.vocal.gainNode) {
+      this.tracks.vocal.gainNode.gain.setTargetAtTime(t * this.tracks.vocal.volume, now, 0.005);
+    }
+    if (this.tracks.original.gainNode) {
+      this.tracks.original.gainNode.gain.setTargetAtTime((1.0 - t) * this.tracks.original.volume, now, 0.005);
+    }
+  }
+
   setAuditionMode(mode) {
     this.auditionMode = mode;
     if (mode === 'vocal') {
       this.tracks.vocal.solo = true;
       this.tracks.vocal.mute = false;
       this.tracks.original.solo = false;
-      this.tracks.original.mute = true;
+      this.tracks.original.mute = false; // Allow real-time threshold crossfade with vocal
       this.tracks.background.solo = false;
       this.tracks.background.mute = true;
     } else if (mode === 'background') {
@@ -178,10 +190,15 @@ class StemsAudioDeck {
       if (track.mute) {
         targetGain = 0;
       } else if (hasAnySolo) {
-        targetGain = track.solo ? track.volume : 0;
+        if (this.auditionMode === 'vocal' && (key === 'vocal' || key === 'original')) {
+          const t = Math.max(0.0, Math.min(1.0, window.dspState?.threshold ?? 1.0));
+          targetGain = (key === 'vocal' ? t : (1.0 - t)) * track.volume;
+        } else {
+          targetGain = track.solo ? track.volume : 0;
+        }
       }
 
-      track.gainNode.gain.setValueAtTime(targetGain, this.audioCtx.currentTime);
+      track.gainNode.gain.setTargetAtTime(targetGain, this.audioCtx.currentTime, 0.005);
     }
   }
 }

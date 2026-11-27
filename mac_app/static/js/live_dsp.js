@@ -1,7 +1,7 @@
 /**
  * DENOX Live DSP Audition Engine
  * Real-Time, Zero-Latency Web Audio API Processing for Logic Pro 13 Modular Rack
- * Provides instantaneous audition feedback when moving sliders or selecting presets.
+ * Provides instantaneous, audible feedback when moving sliders or selecting presets.
  */
 
 class DenoxLiveDspEngine {
@@ -10,6 +10,7 @@ class DenoxLiveDspEngine {
     this.masterGain = null;
     this.wetGain = null;
     this.dryGain = null;
+    this.limiter = null;
 
     this.isPlaying = false;
     this.isBypassed = false;
@@ -22,7 +23,8 @@ class DenoxLiveDspEngine {
 
     this.sourceNodes = {
       original: null,
-      vocal: null
+      vocal: null,
+      active: null
     };
 
     this.playbackStartTime = 0;
@@ -33,33 +35,17 @@ class DenoxLiveDspEngine {
     this.denoiser = {
       vocalGain: null,
       origGain: null,
+      airFilter: null,
       threshold: 1.0,
       mode: 'spectral_gate',
       ambient_bleed: 0.0
-    };
-
-    this.deesser = {
-      peakingFilter: null,
-      highShelf: null,
-      compressor: null,
-      frequency: 6500,
-      reduction: 0.65,
-      q: 2.0
-    };
-
-    this.deverb = {
-      highShelf: null,
-      lowShelf: null,
-      decayGain: null,
-      reduction: 0.70,
-      roomSize: 'medium',
-      earlyReflections: 0.20
     };
 
     this.declicker = {
       enabled: true,
       sensitivity: 0.75,
       clickWidth: 18,
+      transientFilter: null,
       prevSample1: 0,
       prevSample2: 0,
       runningRms: 0.01
@@ -68,10 +54,33 @@ class DenoxLiveDspEngine {
     this.decrackler = {
       enabled: true,
       sensitivity: 0.70,
-      reduction: 0.60,
+      reduction: 0.65,
       band: 'high_frequency',
-      prevSample: 0,
-      runningVar: 0.005
+      bandFilter: null,
+      crackleCompressor: null,
+      bandGain: null,
+      residualGain: null
+    };
+
+    this.deverb = {
+      highShelf: null,
+      midNotch: null,
+      lowShelf: null,
+      tailExpander: null,
+      decayGain: null,
+      reduction: 0.85,
+      roomSize: 'small',
+      earlyReflections: 0.40
+    };
+
+    this.deesser = {
+      peakingFilter: null,
+      highShelf: null,
+      compressor: null,
+      frequency: 6500,
+      reduction: 0.65,
+      q: 1.4,
+      mode: 'split_band'
     };
 
     this.procNode = null;
@@ -105,7 +114,7 @@ class DenoxLiveDspEngine {
       this.dryGain.gain.setValueAtTime(0.0, this.ctx.currentTime);
       this.dryGain.connect(this.masterGain);
 
-      // Setup ScriptProcessor for sample-accurate click & crackle removal
+      // Setup ScriptProcessor for sample-accurate click removal
       // bufferSize: 1024 samples (~21ms at 48kHz)
       this.procNode = this.ctx.createScriptProcessor(1024, 1, 1);
       this.procNode.onaudioprocess = (e) => this.processAudioBlock(e);
@@ -126,107 +135,173 @@ class DenoxLiveDspEngine {
 
   async setupModuleBuffers(urls, totalDuration) {
     this.ensureContext();
-    this.audioBuffers.original = null;
-    this.audioBuffers.vocal = null;
 
-    if (urls.original_url) {
-      this.audioBuffers.original = await this.loadAudioBuffer(urls.original_url);
-    }
-    if (urls.vocal_url) {
+    if (urls.original_url || urls.original) {
       try {
-        this.audioBuffers.vocal = await this.loadAudioBuffer(urls.vocal_url);
+        this.audioBuffers.original = await this.loadAudioBuffer(urls.original_url || urls.original);
       } catch (err) {
-        console.warn("Could not load vocal buffer for live crossfade:", err);
+        console.warn("Could not load original buffer:", err);
+      }
+    }
+    if (urls.vocal_url || urls.vocal) {
+      try {
+        this.audioBuffers.vocal = await this.loadAudioBuffer(urls.vocal_url || urls.vocal);
+      } catch (err) {
+        console.warn("Could not load vocal buffer:", err);
       }
     }
 
-    this.duration = totalDuration || (this.audioBuffers.original ? this.audioBuffers.original.duration : 0);
+    // Fallback: If only one is available, clone reference so both are populated
+    if (!this.audioBuffers.vocal && this.audioBuffers.original) {
+      this.audioBuffers.vocal = this.audioBuffers.original;
+    }
+    if (!this.audioBuffers.original && this.audioBuffers.vocal) {
+      this.audioBuffers.original = this.audioBuffers.vocal;
+    }
+
+    const bufDur = this.audioBuffers.vocal ? this.audioBuffers.vocal.duration : (this.audioBuffers.original ? this.audioBuffers.original.duration : 0);
+    this.duration = totalDuration || bufDur;
   }
 
   buildGraph(moduleName) {
     this.activeModule = moduleName;
     const now = this.ctx.currentTime;
 
-    // Disconnect old sources
+    // Disconnect old sources & processing nodes
     this.disconnectSources();
 
-    if (!this.audioBuffers.original) return;
-
-    // Create fresh buffer sources
-    this.sourceNodes.original = this.ctx.createBufferSource();
-    this.sourceNodes.original.buffer = this.audioBuffers.original;
-    this.sourceNodes.original.loop = true;
-
-    // Connect Dry path for A/B comparison
-    this.sourceNodes.original.connect(this.dryGain);
+    if (!this.audioBuffers.original && !this.audioBuffers.vocal) return;
 
     if (moduleName === 'denoiser') {
-      // De-Noiser: Dual-Track Neural Crossfader
+      // ----------------------------------------------------------------------
+      // 1. DE-NOISER: Dual-Track Neural Crossfader + Air Preservation
+      // ----------------------------------------------------------------------
       this.denoiser.vocalGain = this.ctx.createGain();
       this.denoiser.origGain = this.ctx.createGain();
 
+      this.denoiser.airFilter = this.ctx.createBiquadFilter();
+      this.denoiser.airFilter.type = 'highshelf';
+      this.denoiser.airFilter.frequency.setValueAtTime(6500, now);
+      this.denoiser.airFilter.gain.setValueAtTime(0, now);
+
       this.denoiser.vocalGain.connect(this.wetGain);
-      this.denoiser.origGain.connect(this.wetGain);
+      this.denoiser.origGain.connect(this.denoiser.airFilter);
+      this.denoiser.airFilter.connect(this.wetGain);
 
+      // Create Sources
+      this.sourceNodes.original = this.ctx.createBufferSource();
+      this.sourceNodes.original.buffer = this.audioBuffers.original || this.audioBuffers.vocal;
+      this.sourceNodes.original.loop = true;
       this.sourceNodes.original.connect(this.denoiser.origGain);
+      this.sourceNodes.original.connect(this.dryGain); // Dry = uncleaned original
 
-      if (this.audioBuffers.vocal) {
-        this.sourceNodes.vocal = this.ctx.createBufferSource();
-        this.sourceNodes.vocal.buffer = this.audioBuffers.vocal;
-        this.sourceNodes.vocal.loop = true;
-        this.sourceNodes.vocal.connect(this.denoiser.vocalGain);
-      } else {
-        // Fallback: If vocal buffer not available, apply high-frequency spectral shaping
-        this.sourceNodes.original.connect(this.denoiser.vocalGain);
-      }
+      this.sourceNodes.vocal = this.ctx.createBufferSource();
+      this.sourceNodes.vocal.buffer = this.audioBuffers.vocal || this.audioBuffers.original;
+      this.sourceNodes.vocal.loop = true;
+      this.sourceNodes.vocal.connect(this.denoiser.vocalGain);
 
       this.applyDenoiserParamsNow();
 
-    } else if (moduleName === 'deesser') {
-      // De-Esser: Dynamic Peaking Filter + High Shelf + Compressor
-      this.deesser.peakingFilter = this.ctx.createBiquadFilter();
-      this.deesser.peakingFilter.type = 'peaking';
+    } else {
+      // ----------------------------------------------------------------------
+      // 2-5. DOWNSTREAM VOCAL MODULES (De-Clicker, De-Crackler, De-Verb, De-Esser)
+      // Process the isolated voice (or clean input) with instantaneous real-time DSP
+      // ----------------------------------------------------------------------
+      const targetBuffer = this.audioBuffers.vocal || this.audioBuffers.original;
+      this.sourceNodes.active = this.ctx.createBufferSource();
+      this.sourceNodes.active.buffer = targetBuffer;
+      this.sourceNodes.active.loop = true;
 
-      this.deesser.highShelf = this.ctx.createBiquadFilter();
-      this.deesser.highShelf.type = 'highshelf';
+      // Dry path connects directly to dryGain for instant A/B comparison
+      this.sourceNodes.active.connect(this.dryGain);
 
-      this.deesser.compressor = this.ctx.createDynamicsCompressor();
-      this.deesser.compressor.threshold.setValueAtTime(-28, now);
-      this.deesser.compressor.knee.setValueAtTime(3, now);
-      this.deesser.compressor.ratio.setValueAtTime(12, now);
-      this.deesser.compressor.attack.setValueAtTime(0.002, now);
-      this.deesser.compressor.release.setValueAtTime(0.035, now);
+      if (moduleName === 'declicker') {
+        // De-Clicker: Sample-accurate transient differentiator + dynamic tamer
+        this.declicker.transientFilter = this.ctx.createBiquadFilter();
+        this.declicker.transientFilter.type = 'highshelf';
+        this.declicker.transientFilter.frequency.setValueAtTime(7500, now);
 
-      this.sourceNodes.original.connect(this.deesser.peakingFilter);
-      this.deesser.peakingFilter.connect(this.deesser.highShelf);
-      this.deesser.highShelf.connect(this.deesser.compressor);
-      this.deesser.compressor.connect(this.wetGain);
+        this.sourceNodes.active.connect(this.procNode);
+        this.procNode.connect(this.declicker.transientFilter);
+        this.declicker.transientFilter.connect(this.wetGain);
 
-      this.applyDeesserParamsNow();
+        this.declicker.prevSample1 = 0;
+        this.declicker.prevSample2 = 0;
+        this.declicker.runningRms = 0.01;
 
-    } else if (moduleName === 'deverb') {
-      // De-Verb: Multi-Band Reflection Absorption + Downward Decay Expansion
-      this.deverb.highShelf = this.ctx.createBiquadFilter();
-      this.deverb.highShelf.type = 'highshelf';
-      this.deverb.highShelf.frequency.setValueAtTime(3500, now);
+        this.applyDeclickerParamsNow();
 
-      this.deverb.lowShelf = this.ctx.createBiquadFilter();
-      this.deverb.lowShelf.type = 'lowshelf';
-      this.deverb.lowShelf.frequency.setValueAtTime(250, now);
+      } else if (moduleName === 'decrackler') {
+        // De-Crackler: Multi-Band Dynamic Granular Noise Compressor Network
+        this.decrackler.bandFilter = this.ctx.createBiquadFilter();
+        this.decrackler.crackleCompressor = this.ctx.createDynamicsCompressor();
+        this.decrackler.bandGain = this.ctx.createGain();
+        this.decrackler.residualGain = this.ctx.createGain();
 
-      this.deverb.decayGain = this.ctx.createGain();
+        // Band Path: active -> bandFilter -> compressor -> bandGain -> wetGain
+        this.sourceNodes.active.connect(this.decrackler.bandFilter);
+        this.decrackler.bandFilter.connect(this.decrackler.crackleCompressor);
+        this.decrackler.crackleCompressor.connect(this.decrackler.bandGain);
+        this.decrackler.bandGain.connect(this.wetGain);
 
-      this.sourceNodes.original.connect(this.deverb.highShelf);
-      this.deverb.highShelf.connect(this.deverb.lowShelf);
-      this.deverb.lowShelf.connect(this.deverb.decayGain);
-      this.deverb.decayGain.connect(this.wetGain);
+        // Residual Path: active -> residualGain -> wetGain
+        this.sourceNodes.active.connect(this.decrackler.residualGain);
+        this.decrackler.residualGain.connect(this.wetGain);
 
-      this.applyDeverbParamsNow();
+        this.applyDecracklerParamsNow();
 
-    } else if (moduleName === 'declicker' || moduleName === 'decrackler') {
-      // Real-time discrete click and crackle suppression via DSP processor node
-      this.sourceNodes.original.connect(this.procNode);
-      this.procNode.connect(this.wetGain);
+      } else if (moduleName === 'deverb') {
+        // De-Verb: Multi-Band Reflection Absorption + Downward Decay Expander
+        this.deverb.lowShelf = this.ctx.createBiquadFilter();
+        this.deverb.lowShelf.type = 'lowshelf';
+        this.deverb.lowShelf.frequency.setValueAtTime(250, now);
+
+        this.deverb.midNotch = this.ctx.createBiquadFilter();
+        this.deverb.midNotch.type = 'peaking';
+        this.deverb.midNotch.frequency.setValueAtTime(700, now);
+        this.deverb.midNotch.Q.setValueAtTime(1.8, now);
+
+        this.deverb.highShelf = this.ctx.createBiquadFilter();
+        this.deverb.highShelf.type = 'highshelf';
+        this.deverb.highShelf.frequency.setValueAtTime(3600, now);
+
+        this.deverb.tailExpander = this.ctx.createDynamicsCompressor();
+        this.deverb.tailExpander.knee.setValueAtTime(4, now);
+        this.deverb.tailExpander.attack.setValueAtTime(0.002, now);
+
+        this.deverb.decayGain = this.ctx.createGain();
+
+        // Chain: active -> lowShelf -> midNotch -> highShelf -> tailExpander -> decayGain -> wetGain
+        this.sourceNodes.active.connect(this.deverb.lowShelf);
+        this.deverb.lowShelf.connect(this.deverb.midNotch);
+        this.deverb.midNotch.connect(this.deverb.highShelf);
+        this.deverb.highShelf.connect(this.deverb.tailExpander);
+        this.deverb.tailExpander.connect(this.deverb.decayGain);
+        this.deverb.decayGain.connect(this.wetGain);
+
+        this.applyDeverbParamsNow();
+
+      } else if (moduleName === 'deesser') {
+        // De-Esser: Dynamic Frequency-Selective Sibilance Compressor
+        this.deesser.peakingFilter = this.ctx.createBiquadFilter();
+        this.deesser.peakingFilter.type = 'peaking';
+
+        this.deesser.highShelf = this.ctx.createBiquadFilter();
+        this.deesser.highShelf.type = 'highshelf';
+
+        this.deesser.compressor = this.ctx.createDynamicsCompressor();
+        this.deesser.compressor.knee.setValueAtTime(3, now);
+        this.deesser.compressor.attack.setValueAtTime(0.001, now);
+        this.deesser.compressor.release.setValueAtTime(0.035, now);
+
+        // Chain: active -> peakingFilter -> highShelf -> compressor -> wetGain
+        this.sourceNodes.active.connect(this.deesser.peakingFilter);
+        this.deesser.peakingFilter.connect(this.deesser.highShelf);
+        this.deesser.highShelf.connect(this.deesser.compressor);
+        this.deesser.compressor.connect(this.wetGain);
+
+        this.applyDeesserParamsNow();
+      }
     }
   }
 
@@ -237,27 +312,29 @@ class DenoxLiveDspEngine {
 
     if (this.activeModule === 'declicker') {
       const sens = this.declicker.sensitivity;
-      const thresholdFactor = Math.max(3.5, 7.5 - (sens * 4.2));
+      const width = Math.max(4, Math.min(48, Math.round(this.declicker.clickWidth || 18)));
+      const thresholdFactor = Math.max(3.2, 7.8 - (sens * 4.6));
       let p1 = this.declicker.prevSample1;
       let p2 = this.declicker.prevSample2;
       let rms = this.declicker.runningRms;
+      const halfW = Math.floor(width / 2);
 
       for (let i = 0; i < len; i++) {
         const x = input[i];
-        // 2nd-order differentiation to isolate impulses
         const diff = x - (2.0 * p1) + p2;
         const diffAbs = Math.abs(diff);
 
-        // Exponential moving average for local energy estimate
         rms = (0.995 * rms) + (0.005 * Math.abs(x));
-
-        const isClick = diffAbs > (thresholdFactor * Math.max(rms, 0.005));
+        const isClick = diffAbs > (thresholdFactor * Math.max(rms, 0.004));
 
         if (isClick && sens > 0.05) {
-          const next1 = (i + 1 < len) ? input[i + 1] : p1;
-          const maxEnv = Math.max(Math.abs(p1), Math.abs(next1), 0.005) * 1.25;
-          // Monotonic bounded interpolation: guarantees no runaway divergence
-          const interp = 0.5 * p1 + 0.5 * next1;
+          const targetIdx = Math.min(len - 1, i + halfW);
+          const rightClean = input[targetIdx];
+          const leftClean = p1;
+          const maxEnv = Math.max(Math.abs(leftClean), Math.abs(rightClean), 0.005) * 1.25;
+
+          const t = Math.min(1.0, 1.0 / (halfW + 1));
+          const interp = (1.0 - t) * leftClean + t * rightClean;
           output[i] = Math.max(-maxEnv, Math.min(maxEnv, interp));
         } else {
           output[i] = x;
@@ -271,35 +348,6 @@ class DenoxLiveDspEngine {
       this.declicker.prevSample2 = p2;
       this.declicker.runningRms = rms;
 
-    } else if (this.activeModule === 'decrackler') {
-      const sens = this.decrackler.sensitivity;
-      const reduction = this.decrackler.reduction;
-      let prev = this.decrackler.prevSample;
-      let runVar = this.decrackler.runningVar;
-
-      // Kurtosis-sensitive granular threshold
-      const maxDelta = 0.075 * (1.0 - (reduction * 0.72));
-
-      for (let i = 0; i < len; i++) {
-        const x = input[i];
-        const delta = Math.abs(x - prev);
-        runVar = (0.992 * runVar) + (0.008 * delta);
-
-        if (delta > maxDelta && sens > 0.05) {
-          // Hyperbolic soft-knee shrinkage
-          const sign = x >= prev ? 1 : -1;
-          const excess = delta - maxDelta;
-          const shrinkFactor = 1.0 - (reduction * 0.85);
-          output[i] = Math.max(-1.0, Math.min(1.0, prev + sign * (maxDelta + excess * shrinkFactor)));
-        } else {
-          output[i] = x;
-        }
-        prev = output[i];
-      }
-
-      this.decrackler.prevSample = prev;
-      this.decrackler.runningVar = runVar;
-
     } else {
       // Pass-through
       output.set(input);
@@ -309,9 +357,9 @@ class DenoxLiveDspEngine {
   // --- PARAMETER AUTOMATION METHODS (0ms Latency) ---
 
   updateDenoiserParams(threshold, ambientBleed, mode) {
-    this.denoiser.threshold = threshold !== undefined ? threshold : this.denoiser.threshold;
-    this.denoiser.ambient_bleed = ambientBleed !== undefined ? ambientBleed : this.denoiser.ambient_bleed;
-    this.denoiser.mode = mode || this.denoiser.mode;
+    if (threshold !== undefined) this.denoiser.threshold = threshold;
+    if (ambientBleed !== undefined) this.denoiser.ambient_bleed = ambientBleed;
+    if (mode !== undefined) this.denoiser.mode = mode;
 
     if (this.activeModule === 'denoiser' && this.isPlaying) {
       this.applyDenoiserParamsNow();
@@ -329,14 +377,18 @@ class DenoxLiveDspEngine {
     let oGain = 0.0;
 
     if (mode === 'blend') {
-      const angle = t * (Math.PI / 2.0);
-      oGain = Math.cos(angle);
-      vGain = Math.sin(angle);
+      // Coherent in-phase linear crossfade
+      vGain = t;
+      oGain = 1.0 - t;
     } else if (mode === 'air_preserve') {
       const att = Math.pow(1.0 - t, 1.2);
       const b = Math.max(att, bleed);
       vGain = Math.max(0.0, 1.0 - b);
       oGain = b;
+      if (this.denoiser.airFilter) {
+        const airBoost = t * 3.5;
+        this.denoiser.airFilter.gain.setTargetAtTime(airBoost, now, 0.005);
+      }
     } else {
       // spectral_gate default
       const att = Math.pow(1.0 - t, 1.5) + bleed;
@@ -345,38 +397,75 @@ class DenoxLiveDspEngine {
       oGain = clampedAtt;
     }
 
-    // Set sample-accurate gain transition over 8ms
-    this.denoiser.vocalGain.gain.setTargetAtTime(vGain, now, 0.008);
-    this.denoiser.origGain.gain.setTargetAtTime(oGain, now, 0.008);
+    this.denoiser.vocalGain.gain.setTargetAtTime(vGain, now, 0.005);
+    this.denoiser.origGain.gain.setTargetAtTime(oGain, now, 0.005);
   }
 
-  updateDeesserParams(reduction, frequency, q) {
-    if (reduction !== undefined) this.deesser.reduction = reduction;
-    if (frequency !== undefined) this.deesser.frequency = frequency;
-    if (q !== undefined) this.deesser.q = q;
+  updateDeclickerParams(sensitivity, clickWidth) {
+    if (sensitivity !== undefined) this.declicker.sensitivity = sensitivity;
+    if (clickWidth !== undefined) this.declicker.clickWidth = clickWidth;
 
-    if (this.activeModule === 'deesser' && this.isPlaying) {
-      this.applyDeesserParamsNow();
+    if (this.activeModule === 'declicker' && this.isPlaying) {
+      this.applyDeclickerParamsNow();
     }
   }
 
-  applyDeesserParamsNow() {
-    if (!this.deesser.peakingFilter || !this.deesser.highShelf) return;
+  applyDeclickerParamsNow() {
+    if (!this.declicker.transientFilter) return;
     const now = this.ctx.currentTime;
-    const freq = Math.max(2500, Math.min(11000, this.deesser.frequency));
-    const red = Math.max(0.0, Math.min(1.0, this.deesser.reduction));
-    const q = Math.max(0.5, Math.min(6.0, this.deesser.q));
+    const sens = Math.max(0.0, Math.min(1.0, this.declicker.sensitivity));
+    const shelfGain = -(sens * 5.5);
+    this.declicker.transientFilter.gain.setTargetAtTime(shelfGain, now, 0.005);
+  }
 
-    // Dynamic notch depth down to -24dB
-    const notchGain = -(red * 24.0);
-    const shelfGain = -(red * 6.5);
+  updateDecracklerParams(sensitivity, crackleReduction, band) {
+    if (sensitivity !== undefined) this.decrackler.sensitivity = sensitivity;
+    if (crackleReduction !== undefined) this.decrackler.reduction = crackleReduction;
+    if (band !== undefined) this.decrackler.band = band;
 
-    this.deesser.peakingFilter.frequency.setTargetAtTime(freq, now, 0.008);
-    this.deesser.peakingFilter.Q.setTargetAtTime(q, now, 0.008);
-    this.deesser.peakingFilter.gain.setTargetAtTime(notchGain, now, 0.008);
+    if (this.activeModule === 'decrackler' && this.isPlaying) {
+      this.applyDecracklerParamsNow();
+    }
+  }
 
-    this.deesser.highShelf.frequency.setTargetAtTime(Math.min(12000, freq + 1500), now, 0.008);
-    this.deesser.highShelf.gain.setTargetAtTime(shelfGain, now, 0.008);
+  applyDecracklerParamsNow() {
+    if (!this.decrackler.bandFilter || !this.decrackler.crackleCompressor || !this.decrackler.bandGain) return;
+    const now = this.ctx.currentTime;
+    const sens = Math.max(0.0, Math.min(1.0, this.decrackler.sensitivity));
+    const red = Math.max(0.0, Math.min(1.0, this.decrackler.reduction));
+    const band = this.decrackler.band || 'high_frequency';
+
+    if (band === 'high_frequency') {
+      this.decrackler.bandFilter.type = 'highpass';
+      this.decrackler.bandFilter.frequency.setTargetAtTime(4500, now, 0.005);
+    } else if (band === 'speech_presence') {
+      this.decrackler.bandFilter.type = 'bandpass';
+      this.decrackler.bandFilter.frequency.setTargetAtTime(3600, now, 0.005);
+      this.decrackler.bandFilter.Q.setTargetAtTime(1.2, now, 0.005);
+    } else if (band === 'low_granular') {
+      this.decrackler.bandFilter.type = 'bandpass';
+      this.decrackler.bandFilter.frequency.setTargetAtTime(1200, now, 0.005);
+      this.decrackler.bandFilter.Q.setTargetAtTime(1.0, now, 0.005);
+    } else {
+      // full_band
+      this.decrackler.bandFilter.type = 'highpass';
+      this.decrackler.bandFilter.frequency.setTargetAtTime(80, now, 0.005);
+    }
+
+    // Dynamic threshold drops from -12dB down to -42dB
+    const compThresh = -12.0 - (sens * 30.0);
+    const compRatio = 4.0 + (red * 12.0);
+    this.decrackler.crackleCompressor.threshold.setTargetAtTime(compThresh, now, 0.005);
+    this.decrackler.crackleCompressor.ratio.setTargetAtTime(compRatio, now, 0.005);
+    this.decrackler.crackleCompressor.attack.setTargetAtTime(0.001, now, 0.005);
+    this.decrackler.crackleCompressor.release.setTargetAtTime(0.020, now, 0.005);
+
+    // Band attenuation depth
+    const bandLevel = Math.max(0.08, 1.0 - (red * 0.90));
+    this.decrackler.bandGain.gain.setTargetAtTime(bandLevel, now, 0.005);
+    if (this.decrackler.residualGain) {
+      this.decrackler.residualGain.gain.setTargetAtTime(band === 'full_band' ? 0.0 : 0.85, now, 0.005);
+    }
   }
 
   updateDeverbParams(reduction, roomSize, earlyReflections) {
@@ -390,42 +479,88 @@ class DenoxLiveDspEngine {
   }
 
   applyDeverbParamsNow() {
-    if (!this.deverb.highShelf || !this.deverb.lowShelf || !this.deverb.decayGain) return;
+    if (!this.deverb.highShelf || !this.deverb.midNotch || !this.deverb.lowShelf || !this.deverb.tailExpander || !this.deverb.decayGain) return;
     const now = this.ctx.currentTime;
     const red = Math.max(0.0, Math.min(1.0, this.deverb.reduction));
-    const early = Math.max(0.0, Math.min(1.0, this.deverb.earlyReflections || 0.2));
-    const size = this.deverb.roomSize || 'medium';
+    const early = Math.max(0.0, Math.min(1.0, this.deverb.earlyReflections !== undefined ? this.deverb.earlyReflections : 0.4));
+    const size = this.deverb.roomSize || 'small';
 
-    // Sabine RT60 4-band acoustic model calibration:
-    // Large spaces have longer low-frequency RT60; small rooms have boxy mid-frequency resonance
-    let lowCutMult = 1.0;
-    let highCutMult = 1.0;
-    if (size === 'cathedral' || size === 'large_hall') {
-      lowCutMult = 1.45;
-      highCutMult = 0.85;
-    } else if (size === 'small_room' || size === 'booth') {
-      lowCutMult = 0.75;
-      highCutMult = 1.25;
+    let lowCut = -6.0;
+    let midCut = -6.0;
+    let highCut = -8.0;
+    let releaseSec = 0.075;
+
+    if (size === 'small') {
+      lowCut = -4.0;
+      midCut = -8.0;
+      highCut = -6.0;
+      releaseSec = 0.040;
+    } else if (size === 'medium') {
+      lowCut = -7.0;
+      midCut = -6.0;
+      highCut = -9.0;
+      releaseSec = 0.075;
+    } else if (size === 'large') {
+      lowCut = -11.0;
+      midCut = -5.0;
+      highCut = -12.0;
+      releaseSec = 0.150;
+    } else if (size === 'hall') {
+      lowCut = -15.0;
+      midCut = -5.0;
+      highCut = -16.0;
+      releaseSec = 0.260;
     }
 
-    const highDamp = -(red * 14.0 * highCutMult);
-    const lowDamp = -(red * 10.0 * lowCutMult);
-    const decayLevel = Math.max(0.20, 1.0 - (red * 0.45 * (1.0 - early * 0.5)));
+    this.deverb.lowShelf.gain.setTargetAtTime(lowCut * red, now, 0.005);
+    this.deverb.midNotch.gain.setTargetAtTime(midCut * red, now, 0.005);
+    this.deverb.highShelf.gain.setTargetAtTime(highCut * red, now, 0.005);
 
-    this.deverb.highShelf.gain.setTargetAtTime(highDamp, now, 0.008);
-    this.deverb.lowShelf.gain.setTargetAtTime(lowDamp, now, 0.008);
-    this.deverb.decayGain.gain.setTargetAtTime(decayLevel, now, 0.008);
+    // Tail Expander threshold: -14dB down to -36dB
+    const expThresh = -14.0 - (red * 22.0);
+    const expRatio = 4.0 + (red * 8.0);
+    this.deverb.tailExpander.threshold.setTargetAtTime(expThresh, now, 0.005);
+    this.deverb.tailExpander.ratio.setTargetAtTime(expRatio, now, 0.005);
+    this.deverb.tailExpander.release.setTargetAtTime(releaseSec, now, 0.005);
+
+    // Direct sound clarity floor
+    const decayLevel = Math.max(0.35, 1.0 - (red * 0.45 * (1.0 - early * 0.5)));
+    this.deverb.decayGain.gain.setTargetAtTime(decayLevel, now, 0.005);
   }
 
-  updateDeclickerParams(sensitivity, clickWidth) {
-    if (sensitivity !== undefined) this.declicker.sensitivity = sensitivity;
-    if (clickWidth !== undefined) this.declicker.clickWidth = clickWidth;
+  updateDeesserParams(reduction, frequency, q) {
+    if (reduction !== undefined) this.deesser.reduction = reduction;
+    if (frequency !== undefined) this.deesser.frequency = frequency;
+    if (q !== undefined) this.deesser.q = q;
+
+    if (this.activeModule === 'deesser' && this.isPlaying) {
+      this.applyDeesserParamsNow();
+    }
   }
 
-  updateDecracklerParams(sensitivity, crackleReduction, band) {
-    if (sensitivity !== undefined) this.decrackler.sensitivity = sensitivity;
-    if (crackleReduction !== undefined) this.decrackler.reduction = crackleReduction;
-    if (band !== undefined) this.decrackler.band = band;
+  applyDeesserParamsNow() {
+    if (!this.deesser.peakingFilter || !this.deesser.highShelf || !this.deesser.compressor) return;
+    const now = this.ctx.currentTime;
+    const freq = Math.max(3000, Math.min(10000, this.deesser.frequency || 6500));
+    const red = Math.max(0.0, Math.min(1.0, this.deesser.reduction));
+    const q = Math.max(0.6, Math.min(4.0, this.deesser.q || 1.4));
+
+    // Dynamic notch depth down to -22dB
+    const notchGain = -(red * 22.0);
+    const shelfGain = -(red * 8.0);
+
+    this.deesser.peakingFilter.frequency.setTargetAtTime(freq, now, 0.005);
+    this.deesser.peakingFilter.Q.setTargetAtTime(q, now, 0.005);
+    this.deesser.peakingFilter.gain.setTargetAtTime(notchGain, now, 0.005);
+
+    this.deesser.highShelf.frequency.setTargetAtTime(Math.min(12000, freq + 1200), now, 0.005);
+    this.deesser.highShelf.gain.setTargetAtTime(shelfGain, now, 0.005);
+
+    // Compressor threshold: -18dB down to -36dB
+    const compThresh = -18.0 - (red * 18.0);
+    const compRatio = 4.0 + (red * 12.0);
+    this.deesser.compressor.threshold.setTargetAtTime(compThresh, now, 0.005);
+    this.deesser.compressor.ratio.setTargetAtTime(compRatio, now, 0.005);
   }
 
   // Generic dispatcher for slider input events
@@ -457,10 +592,13 @@ class DenoxLiveDspEngine {
     this.playbackStartTime = now;
 
     if (this.sourceNodes.original) {
-      this.sourceNodes.original.start(now, offset);
+      try { this.sourceNodes.original.start(now, offset); } catch (_) {}
     }
     if (this.sourceNodes.vocal) {
-      this.sourceNodes.vocal.start(now, offset);
+      try { this.sourceNodes.vocal.start(now, offset); } catch (_) {}
+    }
+    if (this.sourceNodes.active) {
+      try { this.sourceNodes.active.start(now, offset); } catch (_) {}
     }
 
     this.isPlaying = true;
@@ -519,11 +657,19 @@ class DenoxLiveDspEngine {
         this.sourceNodes.vocal.disconnect();
         this.sourceNodes.vocal = null;
       }
+      if (this.sourceNodes.active) {
+        this.sourceNodes.active.stop();
+        this.sourceNodes.active.disconnect();
+        this.sourceNodes.active = null;
+      }
+      if (this.procNode) {
+        this.procNode.disconnect();
+      }
     } catch (e) {
       // Ignore already stopped nodes
     }
   }
 }
 
-// Global singleton instance
+window.DenoxLiveDspEngine = DenoxLiveDspEngine;
 window.denoxDsp = new DenoxLiveDspEngine();
